@@ -1,1 +1,3 @@
-from .user import User
+from app.models.user import User
+from app.models.student import Student
+from app.models.company import Company

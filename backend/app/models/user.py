@@ -10,3 +10,8 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # adding relationship to students table
+    student = db.relationship("Student",back_populates="user",uselist=False,cascade='all, delete-orphan')
+
+    company = db.relationship("Company",back_populates="user",uselist=False,cascade='all, delete-orphan')

@@ -2,6 +2,8 @@ from werkzeug.security import generate_password_hash
 
 from app.extensions import db
 from app.models.user import User
+from app.models.student import Student
+from app.models.company import Company
 
 def create_database(app):
     with app.app_context():

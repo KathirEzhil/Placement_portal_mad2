@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
 from app.models import User
-from app.utils.decorators import login_required 
+from app.utils.decorators import login_required, role_required 
 
 auth_bp = Blueprint("auth",__name__,url_prefix="/auth")
 
@@ -43,7 +43,7 @@ def register():
             "message": "Passwords do not match"
         }), 400
     
-    if role not in ["student", "companny"]:
+    if role not in ["student", "company"]:
         return jsonify({
             "success": False,
             "message": "Invalid role"
@@ -126,6 +126,7 @@ def login():
         }
     }), 200
 
+# for testing the login_required decorator
 @auth_bp.route("/protected")
 @login_required
 def protected():
@@ -133,3 +134,24 @@ def protected():
         "success": True,
         "message": "You are authenticated"
         })
+
+# for testing the role_required decorator
+@auth_bp.route("/admin-test")
+@login_required
+@role_required("admin")
+def admin_test():
+    return jsonify({
+        "success": True,
+        "message": "Welcome Admin"
+    }), 200
+
+@auth_bp.route("/logout",methods=["POST"])
+@login_required
+def logout():
+
+    session.clear()
+
+    return jsonify({
+        "success": True,
+        "message": "Logged out successfully"
+    }), 200
