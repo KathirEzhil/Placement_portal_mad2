@@ -29,6 +29,12 @@ def get_profile():
             "college_email": student.college_email,
             "personal_email": student.personal_email,
             "roll_number": student.roll_number,
+            "graduation_year": student.graduation_year,
+            "skills": student.skills,
+            "linkedin_url": student.linkedin_url,
+            "github_url": student.github_url,
+            "portfolio_url": student.portfolio_url,
+            "permanent_address": student.permanent_address,
             "college_name": student.college_name,
             "stream": student.stream,
             "branch": student.branch,
@@ -56,6 +62,12 @@ def update_profile():
     college_email = data.get("college_email")
     personal_email = data.get("personal_email")
     roll_number = data.get("roll_number")
+    graduation_year = data.get("graduation_year")
+    skills = data.get("skills")
+    linkedin_url = data.get("linkedin_url")
+    github_url = data.get("github_url")
+    portfolio_url = data.get("portfolio_url")
+    permanent_address = data.get("permanent_address")
     college_name = data.get("college_name")
     stream = data.get("stream")
     branch = data.get("branch")
@@ -70,6 +82,18 @@ def update_profile():
             "message": "Some required fields are missing, all fields except personal mail and resume are required"
         }), 400
     
+    if not graduation_year:
+        return jsonify({
+            "success": False,
+            "message": "graduation year is a required field"
+        }), 400
+
+    if not permanent_address:
+        return jsonify({
+            "success": False,
+            "message": "Permanent address is a required field"
+        }), 400
+
     college_name = college_name.split()
     
     if cgpa < 0 or cgpa > 10:
@@ -96,6 +120,12 @@ def update_profile():
             roll_number = roll_number,
             college_email = college_email,
             personal_email = personal_email,
+            graduation_year = graduation_year,
+            skills = skills,
+            linkedin_url = linkedin_url,
+            github_url = github_url,
+            portfolio_url = portfolio_url,
+            permanent_address = permanent_address,
             college_name = college_name,
             stream = stream,
             branch = branch,
@@ -107,15 +137,21 @@ def update_profile():
         db.session.add(student)
 
     else:
-        college_email = college_email
-        personal_email = personal_email
-        college_name = college_name
-        stream = stream
-        branch = branch
-        cgpa = cgpa
-        phone = phone
-        year = year
-        resume = resume
+        student.college_email = college_email
+        student.personal_email = personal_email
+        student.college_name = college_name
+        student.graduation_year = graduation_year
+        student.skills = skills
+        student.linkedin_url = linkedin_url
+        student.github_url = github_url
+        student.portfolio_url = portfolio_url
+        student.permanent_address = permanent_address
+        student.stream = stream
+        student.branch = branch
+        student.cgpa = cgpa
+        student.phone = phone
+        student.year = year
+        student.resume = resume
 
     try:
         db.session.commit()
