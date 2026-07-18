@@ -407,3 +407,142 @@ def get_company_drive(drive_id):
         "success": True,
         "drive": drive.to_dict()
     }), 200
+
+@company_bp.route("/drives/<int:drive_id>",methods=["PUT"])
+@login_required
+@role_required("company")
+def update_drive(drive_id):
+
+    user_id = session.get("user_id")
+    company = Company.query.filter_by(user_id=user_id).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found"
+        }), 404
+    
+    drive = db,session.get(PlacementDrive,drive_id)
+
+    if not drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found"
+        }), 404
+    
+    if drive.company_id != company.id:
+        return jsonify({
+            "success": False,
+            "message": "You are not authenticated to update this placement drive"
+        }), 403
+    
+    if drive.status != "pending":
+        return jsonify({
+            "success": False,
+            "message": "Only pending placement drives can be updated"
+        }), 403
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "No input data provided"
+        })
+
+
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    job_type = data.get("job_type", "").strip()
+    compensation = data.get("compensation", "").strip()
+    location = data.get("location", "").strip()
+    required_skills = data.get("required_skills", "").strip()
+    selection_process = data.get("selection_process", "").strip()
+    eligibility_cgpa = data.get("eligibility_cgpa")
+    drive_date = data.get("drive_date")
+    last_date_to_apply = data.get("last_date_to_apply")
+
+    # again valiidate all the fields(okay to repeat the same for now)
+
+    # job_type validation
+    allowed_job_types = ["Internship","Full-Time","Full-Time + Internship"]
+    if job_type not in allowed_job_types:
+        return jsonify({
+            "success": False,
+            "message": "Invalid job type"
+        }), 400
+    
+    # cgpa requirement validation
+    try:
+        eligibility_cgpa = float(eligibility_cgpa)
+    
+    except (TypeError, ValueError):
+        return jsonify({
+            "success": False,
+            "message": "Eligibility cgpa must be a valid number"
+        }), 400
+    if eligibility_cgpa < 0 or eligibility_cgpa > 10:
+        return jsonify({
+            "success": False,
+            "message": "Eligibility CGPA must be between 0 and 10."
+        }), 400
+    
+    # date validation
+    try:
+        drive_date = datetime.strptime(drive_date,"%Y-%m-%d").date()
+        last_date_to_apply = datetime.strptime(last_date_to_apply,"%Y-%m-%d").date()
+
+    except ValueError:
+        return jsonify({
+            "success": False,
+            "message": "Dates must be in YYYY-MM-DD format"
+        }), 400
+    
+    # validate application deadline - deadline be before drive date
+    if last_date_to_apply > drive_date:
+        return jsonify({
+            "success": False,
+            "message": "Last date to apply cannot be after the drive date"
+        }), 400
+    
+    # check past dates
+    today = date.today()
+    if drive_date < today:
+        return jsonify({
+            "success": False,
+            "message": "Drive date cannot be in the past."
+        }), 400
+    if last_date_to_apply < today:
+        return jsonify({
+            "success": False,
+            "message": "Last date to apply cannot be in the past."
+        }), 400
+    
+    drive.title = title
+    drive.description = description
+    drive.job_type = job_type
+    drive.compensation = compensation
+    drive.location = location
+    drive.required_skills = required_skills
+    drive.selection_process = selection_process
+    drive.eligibility_cgpa = eligibility_cgpa
+    drive.drive_date = drive_date
+    drive.last_date_to_apply = last_date_to_apply
+
+    try:
+        db.session.commmit()
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to update placement drive",
+            "error": str(e)
+        })
+    
+    return jsonify({
+        "success":True,
+        "message": "Placement drive updated successfully",
+        "drive": drive.to_dict()
+    }), 200

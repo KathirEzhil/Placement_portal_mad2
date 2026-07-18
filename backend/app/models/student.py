@@ -28,3 +28,5 @@ class Student(db.Model):
 
     # adding relationship to users table
     user = db.relationship("User",back_populates="student")
+
+    applications = db.relationship("Application",back_populates="student",cascade="all, delete-orphan")

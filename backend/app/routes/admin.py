@@ -1,13 +1,15 @@
 from flask import Blueprint, jsonify, request
 from app.models import Company
+from app.models import PlacementDrive
 
 from app.extensions import db
 from app.utils.decorators import login_required, role_required
 
 
-admin_bp = Blueprint("admin",__name__,prefix_url="/admin")
+admin_bp = Blueprint("admin",__name__,url_prefix="/admin")
 
 
+# ======= company view approve reject =========
 @admin_bp.route("/pending-companies",methods=["GET"])
 @login_required
 @role_required("admin")
@@ -76,7 +78,7 @@ def get_company(company_id):
     }), 200
 
 
-@admin_bp.route("/company/<int:company_id/approve",methods=["PUT"])
+@admin_bp.route("/company/<int:company_id>/approve",methods=["PUT"])
 @login_required
 @role_required("admin")
 def appprove_company(company_id):
@@ -173,3 +175,165 @@ def reject_company(company_id):
         "success": True,
         "message": "Company rejected successfully"
     }), 200
+
+
+# ======= drives view approve reject =========
+@admin_bp.route("/pending-drives",methods=["GET"])
+@login_required
+@role_required("admin")
+def get_pending_drives():
+
+    pending = PlacementDrive.query.filter_by(approval_status = "pending").all()
+
+    if not pending:
+        return jsonify({
+            "success": True,
+            "message": "No pending drives found.",
+            "companies": []
+        }), 200
+    
+    pending_drives_data = [drive.to_dict() for drive in pending]
+
+    return jsonify({
+        "success": True,
+        "companies": pending_drives_data
+    }), 200
+
+
+@admin_bp.route("/drives/<int:drive_id>",methods=["GET"])
+@login_required
+@role_required("admin")
+def get_drive_details(drive_id):
+
+    drive = db.session.get(PlacementDrive, drive_id)
+
+    if not drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drice not found"
+        }), 404
+    
+    return jsonify({
+        "success": True,
+        "drive": drive.to_dict()
+    }), 200
+
+
+@admin_bp.route("/drives/<int:drive_id>/approve",methods=["PUT"])
+@login_required
+@role_required("admin")
+def approve_drive(drive_id):
+
+    drive = db.session.get(PlacementDrive, drive_id)
+
+    if not  drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found"
+        }), 404
+    
+    if drive.status == "approved":
+        return jsonify({
+            "success": False,
+            "message": "Placement drive already approved"
+        }), 400
+    
+    if drive.status == "rejected":
+        return jsonify({
+            "success": False,
+            "message": "Rejected placement drives cannot be approved."
+        }), 400
+    
+    if drive.status == "closed":
+        return jsonify({
+            "success": False,
+            "message": "Closed placement drives cannot be approved."
+        }), 400
+    
+    try:
+        drive.status = "approved"
+        drive.rejection_reason = None
+
+        db.session.commmit()
+
+        return jsonify({
+            "success": True,
+            "message": "Placement drive approved successfully"
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "successs": "False",
+            "message": "Failed to approve placement drive",
+            "error": str(e)
+        }), 500
+    
+
+@admin_bp.route("/drives/<int:drive_id>/reject",methods=["PUT"])
+@login_required
+@role_required("admin")
+def reject_drive(drive_id):
+
+    drive = db.session.get(PlacementDrive, drive_id)
+
+    if not  drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found"
+        }), 404
+    
+    if drive.status == "rejected":
+        return jsonify({
+            "success": False,
+            "message": "Placement drive already rejected"
+        }), 400
+    
+    # if drive.status == "approved":
+    #     return jsonify({
+    #         "success": False,
+    #         "message": "approved placement drives cannot be rejected"
+    #     }), 400
+    
+    if drive.status == "closed":
+        return jsonify({
+            "success": False,
+            "message": "Closed placement drives cannot be rejected"
+        }), 400
+    
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "No input data provided"
+        }), 400
+    
+    reason = data.get("reason","").strip()
+
+    if not reason:
+        return jsonify({
+            "success": False,
+            "message": "Rejection reason is required"
+        }), 400
+    
+    try:
+        drive.status = "rejected"
+        drive.rejection_reason = reason
+
+        db.session.commmit()
+
+        return jsonify({
+            "success": True,
+            "message": "Placement drive rejected successfully"
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "successs": "False",
+            "message": "Failed to reject placement drive",
+            "error": str(e)
+        }), 500

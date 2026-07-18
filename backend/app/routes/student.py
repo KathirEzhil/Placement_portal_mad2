@@ -94,7 +94,7 @@ def update_profile():
             "message": "Permanent address is a required field"
         }), 400
 
-    college_name = college_name.split()
+    college_name = college_name.strip()
     
     if cgpa < 0 or cgpa > 10:
         return jsonify({

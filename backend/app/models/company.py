@@ -1,7 +1,7 @@
 from app.extensions import db
 from datetime import  datetime
 
-class Company(db.User):
+class Company(db.Model):
 
     __tablename__ = "companies"
 
@@ -9,7 +9,7 @@ class Company(db.User):
     user_id = db.Column(db.Integer,db.ForeignKey("users.id"),unique=True,nullable=False)
     company_name = db.Column(db.String(100),unique=True,nullable=False)
     industry_type = db.Column(db.String(100),nullable=False)
-    company_domain = db.Column(db.String(100),nulllable=False)
+    company_domain = db.Column(db.String(100),nullable=False)
     website = db.Column(db.String(255),unique=True,nullable=False)
     hr_email = db.Column(db.String(250),nullable=False)
     hr_contact = db.Column(db.String(15))
@@ -18,7 +18,7 @@ class Company(db.User):
     location = db.Column(db.String(250),nullable=False)
     govt_verification_id = db.Column(db.String(100),unique=True)
     description = db.Column(db.Text)
-    rejection_reason = db.Column(db.text,nullable=True)
+    rejection_reason = db.Column(db.Text,nullable=True)
     approval_status = db.Column(db.String(20),default="pending",nullable=False)
     created_at = db.Column(db.DateTime,default=datetime.utcnow,nullable=False)
 

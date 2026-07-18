@@ -9,7 +9,7 @@ class PlacementDrive(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer,db.ForeignKey("companies.id"),nullable=False)
     title = db.Column(db.String(150),nullable=False)
-    description = db.Column(db.text,nullable=False)
+    description = db.Column(db.Text,nullable=False)
     job_type = db.Column(db.String(100),nullable=False)
     compensation = db.Column(db.String(100),nullable=False)
     location = db.Column(db.String(150),nullable=False)
@@ -20,9 +20,9 @@ class PlacementDrive(db.Model):
     last_date_to_apply = db.Column(db.Date,nullable=False)
     status = db.Column(db.String(50),nullable=False,default="pending")
     rejection_reason = db.Column(db.Text,nullable=True)
-    created_at = db.Column(db.DateTime,nullable=False,default=datetime.utnow)
+    created_at = db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
 
-    drives = db.relationship("PlacementDrive",backref="company",lazy=True,cascade="all, delete-orphan")
+    applications = db.relationship("Application",back_populates="drive",cascade="all, delete-orphan")
 
     __table_args__ = (
         db.CheckConstraint(
