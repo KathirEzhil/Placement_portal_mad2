@@ -200,7 +200,7 @@ def get_pending_drives():
     }), 200
 
 
-@admin_bp.route("/drives/<int:drive_id>",methods=["GET"])
+@admin_bp.route("/drive/<int:drive_id>",methods=["GET"])
 @login_required
 @role_required("admin")
 def get_drive_details(drive_id):
@@ -219,7 +219,7 @@ def get_drive_details(drive_id):
     }), 200
 
 
-@admin_bp.route("/drives/<int:drive_id>/approve",methods=["PUT"])
+@admin_bp.route("/drive/<int:drive_id>/approve",methods=["PUT"])
 @login_required
 @role_required("admin")
 def approve_drive(drive_id):
@@ -254,7 +254,7 @@ def approve_drive(drive_id):
         drive.status = "approved"
         drive.rejection_reason = None
 
-        db.session.commmit()
+        db.session.commit()
 
         return jsonify({
             "success": True,
@@ -271,7 +271,7 @@ def approve_drive(drive_id):
         }), 500
     
 
-@admin_bp.route("/drives/<int:drive_id>/reject",methods=["PUT"])
+@admin_bp.route("/drive/<int:drive_id>/reject",methods=["PUT"])
 @login_required
 @role_required("admin")
 def reject_drive(drive_id):

@@ -30,18 +30,71 @@ class Application(db.Model):
         db.CheckConstraint("status IN ('applied','shortlisted','selected','rejected','withdrawn')",name="check_application_status"),
     )
 
-    def to_dict(self):
+    def to_dict_student(self):
         return {
             "id": self.id,
+
             "student_id": self.student_id,
-            "drive_id": self.drive_id,
+
+            "drive": {
+                "id": self.drive.id,
+                "title": self.drive.title,
+                "company_name": self.drive.company.company_name,
+                "location": self.drive.location
+            },
+
             "resume_used": self.resume_used,
             "cover_letter": self.cover_letter,
+
             "status": self.status,
-            # "current_round": self.current_round,
-            "company_notes": self.company_notes,
-            "rejection_reason": self.rejection_reason,
-            "last_status_updated_by": self.last_status_updated_by,
+
+            "recruitment": {
+                "status": self.recruitment_process.recruitment_status,
+                "current_round": self.recruitment_process.current_round
+            },
+
+            "rejection_reason": (
+                self.rejection_reason
+                if self.status == "rejected"
+                else None
+            ),
+
             "applied_at": self.applied_at.isoformat() if self.applied_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+    
+    def to_dict_company(self):
+        return {
+            "id": self.id,
+
+            "student": {
+                "id": self.student.id,
+                "name": self.student.full_name,
+                "roll_number": self.student.roll_number,
+                "branch": self.student.branch,
+                "cgpa": self.student.cgpa
+            },
+
+            "student_id": self.student_id,
+            "drive_id": self.drive_id,
+
+            "resume_used": self.resume_used,
+            "cover_letter": self.cover_letter,
+
+            "status": self.status,
+
+            "company_notes": self.company_notes,
+            "rejection_reason": self.rejection_reason,
+
+            "recruitment": {
+                "status": self.recruitment_process.recruitment_status,
+                "current_round": self.recruitment_process.current_round
+            },
+
+            "last_status_updated_by": self.last_status_updated_by,
+
+            "applied_at": self.applied_at.isoformat() if self.applied_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+    
+

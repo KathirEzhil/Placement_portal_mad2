@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models.user import User
 from app.models.company import Company
 from app.models.placement_drive import PlacementDrive
+from app.models.application import Application
 
 from app.utils.decorators import login_required, role_required
 
@@ -189,7 +190,7 @@ def update_profile():
         }), 500
     
 
-@company_bp.route("/drives", methods=["POST"])
+@company_bp.route("/drive", methods=["POST"])
 @login_required
 @role_required("company")
 def create_drive():
@@ -375,7 +376,7 @@ def get_company_drives():
     }), 200
 
 
-@company_bp.route(".drives/<int:drive_id>",methods=["GET"])
+@company_bp.route("/drives/<int:drive_id>",methods=["GET"])
 @login_required
 @role_required("company")
 def get_company_drive(drive_id):
@@ -408,7 +409,7 @@ def get_company_drive(drive_id):
         "drive": drive.to_dict()
     }), 200
 
-@company_bp.route("/drives/<int:drive_id>",methods=["PUT"])
+@company_bp.route("/drive/<int:drive_id>",methods=["PUT"])
 @login_required
 @role_required("company")
 def update_drive(drive_id):
@@ -545,4 +546,33 @@ def update_drive(drive_id):
         "success":True,
         "message": "Placement drive updated successfully",
         "drive": drive.to_dict()
+    }), 200
+
+
+@company_bp.route("/drives/<int:drive_id>/applications", methods=["GET"])
+@login_required
+@role_required("company")
+def get_drive_applications(drive_id):
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success" : False,
+            "message": "Company profile not found"
+        }), 404
+    
+    drive = PlacementDrive.query.filter_by(id=drive_id,company_id=company.id).first()
+
+    if not drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found"
+        }), 404
+    
+    applications = Application.query.filter_by(drive_id=drive.id).order_by(Application.applied_at.desc()).all()
+
+    return jsonify({
+        "success": True,
+       "applications": [application.to_dict_company() for application in applications]
     }), 200

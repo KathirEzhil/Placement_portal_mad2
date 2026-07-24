@@ -8,6 +8,7 @@ class Student(db.Model):
 
     id = db.Column(db.Integer,primary_key=True)
     user_id = db.Column(db.Integer,db.ForeignKey("users.id"),unique=True,nullable=False)
+    full_name = db.Column(db.String(100),nullable=False)
     college_email = db.Column(db.String(100),unique=True,nullable=False)
     personal_email = db.Column(db.String(100),unique=True)
     roll_number = db.Column(db.String(20),unique=True,nullable=False)
