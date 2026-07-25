@@ -11,6 +11,8 @@ from app.utils.decorators import login_required, role_required
 
 company_bp = Blueprint("company",__name__,url_prefix="/company")
 
+VALID_APPLICATION_STATUSES = {"shortlisted","rejected"}
+
 
 @company_bp.route("/profile",methods=["GET"])
 @login_required
@@ -576,3 +578,123 @@ def get_drive_applications(drive_id):
         "success": True,
        "applications": [application.to_dict_company() for application in applications]
     }), 200
+
+
+@company_bp.route("/applications/<int:application_id>", methods=["GET"])
+@login_required
+@role_required("company")
+def get_application(application_id):
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    application = Application.query.join(PlacementDrive).filter(
+        Application.id == application_id,
+        PlacementDrive.company_id == company.id
+    ).first()
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "application": application.to_dict_company()
+    }), 200
+
+
+@company_bp.route("/applications/<int:application_id>/status",methods=["PUT"])
+@login_required
+@role_required("company")
+def update_application_status(application_id):
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success" : False,
+            "message": "Company profile not found"
+        }), 404
+
+    application = Application.query.join(PlacementDrive).filter(
+        Application.id == application_id,
+        PlacementDrive.company_id == company.id
+    ).first()
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
+
+    status = data.get("status")
+    rejection_reason = data.get("rejection_reason")
+
+    if status not in VALID_APPLICATION_STATUSES:
+        return jsonify({
+            "success": False,
+            "message": "Invalid application status"
+        }), 400
+
+    if status == "rejected" and not rejection_reason:
+        return jsonify({
+            "success":False,
+            "message":"Rejection reason is required."
+        }),400
+
+    if application.status == status:
+        return jsonify({
+            "success": False,
+            "message": f"Application already has this status {status}"
+        }), 400
+
+    if application.status in ["withdrawn", "selected"]:
+        return jsonify({
+            "success": False,
+            "message": f"Cannot update a {application.status} application."
+        }), 400
+
+    application.status = status
+
+    application.last_status_updated_by = "company"
+
+    if status == "rejected":
+        application.rejection_reason = rejection_reason
+    else:
+        application.rejection_reason = None
+
+    if status == "shortlisted":
+        application.recruitment_process.recruitment_status = "in_progress"
+
+    elif status == "rejected":
+        application.recruitment_process.recruitment_status = "completed"
+
+    try:
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Application {status} successfully.",
+            "application": application.to_dict_company()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": "status update failed",
+            "error": str(e)
+        })
+
+    
+
+    

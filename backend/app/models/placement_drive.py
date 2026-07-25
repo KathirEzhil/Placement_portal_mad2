@@ -17,6 +17,14 @@ class PlacementDrive(db.Model):
     selection_process = db.Column(db.Text,nullable=False)
     eligibility_cgpa = db.Column(db.Float,nullable=False)
     drive_date = db.Column(db.Date,nullable=False)
+    round1_required = db.Column(db.Boolean, default=False)
+    round1_name = db.Column(db.String(100))
+    round2_required = db.Column(db.Boolean, default=False)
+    round2_name = db.Column(db.String(100))
+    round3_required = db.Column(db.Boolean, default=False)
+    round3_name = db.Column(db.String(100))
+    round4_required = db.Column(db.Boolean, default=False)
+    round4_name = db.Column(db.String(100))
     last_date_to_apply = db.Column(db.Date,nullable=False)
     status = db.Column(db.String(50),nullable=False,default="pending")
     rejection_reason = db.Column(db.Text,nullable=True)
@@ -47,6 +55,14 @@ class PlacementDrive(db.Model):
             "selection_process": self.selection_process,
             "eligibility_cgpa": self.eligibility_cgpa,
             "drive_date": self.drive_date.isoformat(),
+            "round1_required": self.round1_required,
+            "round1_name": self.round1_name,
+            "round2_required": self.round2_required,
+            "round2_name": self.round2_name,
+            "round3_required": self.round3_required,
+            "round3_name": self.round3_name,
+            "round4_required": self.round4_required,
+            "round4_name": self.round4_name,
             "last_date_to_apply": self.last_date_to_apply.isoformat(),
             "status": self.status,
             "rejection_reason": self.rejection_reason,
