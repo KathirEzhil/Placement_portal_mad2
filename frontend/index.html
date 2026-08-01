@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Placement Park</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+     <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+    <!-- our CSS -->
+     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+</head>
+
+<body>
+
+    <div id="app">
+
+    </div>
+
+    <!-- Vue -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- App -->
+    <script src="{{ url_for('static', filename='js/pages/public/LandingPage.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pages/public/LoginPage.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pages/public/RegisterPage.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/pages/student/StudentDashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pages/company/CompanyDashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pages/admin/AdminDashboard.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/components/Navbar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/Sidebar.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/components/dashboard/DashboardHero.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/dashboard/StatCard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/dashboard/PlacementCalendar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/dashboard/RecruitmentProgress.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/mock/studentDashboardData.js') }}"></script>
+
+
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+
+</body>
+
+</html>

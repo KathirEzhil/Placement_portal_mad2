@@ -1,0 +1,25 @@
+.stat-card{
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.stat-card:hover{
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15) !important;
+}
+
+.stat-icon{
+    width:56px;
+    height:56px;
+    border-radius:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-size:28px;
+}
+
+.main-content {
+    height: calc(100vh - 58px);
+    overflow-y: auto;
+}
