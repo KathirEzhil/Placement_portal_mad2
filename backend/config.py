@@ -11,3 +11,15 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'instance', DATABASE_NAME)}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    OFFER_LETTER_FOLDER = "uploads/offer_letters"
+
+    MAIL_SERVER = "smtp.gmail.com"
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+
+    MAIL_USERNAME = "24f1002369@ds.study.iitm.ac.in"
+    MAIL_PASSWORD = "yrgwfxzngknijetg"
+
+    MAIL_DEFAULT_SENDER = "24f1002369@ds.study.iitm.ac.in"

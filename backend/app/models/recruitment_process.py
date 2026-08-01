@@ -28,22 +28,22 @@ class RecruitmentProcess(db.Model):
 
 
     round1_scheduled_at = db.Column(db.DateTime)
-    round1_meeting_link = db.Column(db.String(500))
+    round1_meeting_details = db.Column(db.String(500))
     round1_test_link = db.Column(db.String(500))
     round1_email_sent = db.Column(db.Boolean, default=False)
 
     round2_scheduled_at = db.Column(db.DateTime)
-    round2_meeting_link = db.Column(db.String(500))
+    round2_meeting_details = db.Column(db.String(500))
     round2_test_link = db.Column(db.String(500))
     round2_email_sent = db.Column(db.Boolean, default=False)
 
     round3_scheduled_at = db.Column(db.DateTime)
-    round3_meeting_link = db.Column(db.String(500))
+    round3_meeting_details = db.Column(db.String(500))
     round3_test_link = db.Column(db.String(500))
     round3_email_sent = db.Column(db.Boolean, default=False)
 
     round4_scheduled_at = db.Column(db.DateTime)
-    round4_meeting_link = db.Column(db.String(500))
+    round4_meeting_details = db.Column(db.String(500))
     round4_test_link = db.Column(db.String(500))
     round4_email_sent = db.Column(db.Boolean, default=False)
 

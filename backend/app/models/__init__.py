@@ -4,3 +4,4 @@ from app.models.company import Company
 from app.models.placement_drive import PlacementDrive
 from app.models.application import Application
 from app.models.recruitment_process import RecruitmentProcess
+from app.models.activity_log import ActivityLog
