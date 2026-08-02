@@ -6,8 +6,10 @@ from app.models.user import User
 from app.models.company import Company
 from app.models.placement_drive import PlacementDrive
 from app.models.application import Application
+from app.models.recruitment_process import RecruitmentProcess
 
 from app.utils.decorators import login_required, role_required
+from app.utils.activity_logger import log_activity
 
 company_bp = Blueprint("company",__name__,url_prefix="/company")
 
@@ -319,6 +321,15 @@ def create_drive():
         drive_date=drive_date,
         last_date_to_apply=last_date_to_apply,
         status="pending"
+    )
+
+    log_activity(
+        user_id=session["user_id"],
+        role="company",
+        action="Created Drive",
+        entity_type="PlacementDrive",
+        entity_id=new_drive.id,
+        description=f"{company.company_name} created {new_drive.title}"
     )
 
     try:
@@ -654,7 +665,7 @@ def update_application_status(application_id):
         return jsonify({
             "success": False,
             "message": f"Application already has this status {status}"
-        }), 400
+        }), 409
 
     if application.status in ["withdrawn", "selected"]:
         return jsonify({
@@ -672,17 +683,27 @@ def update_application_status(application_id):
         application.rejection_reason = None
 
     if status == "shortlisted":
-        application.recruitment_process.recruitment_status = "in_progress"
+
+        if application.recruitment_process is None:
+
+            application.recruitment_process = RecruitmentProcess(
+                application_id=application.id,
+                recruitment_status="not_started",
+                current_round=0
+            )
+
+            
 
     elif status == "rejected":
-        application.recruitment_process.recruitment_status = "completed"
+        if application.recruitment_process:
+            application.recruitment_process.recruitment_status = "completed"
 
     try:
         db.session.commit()
 
         return jsonify({
             "success": True,
-            "message": f"Application {status} successfully.",
+            "message": f"Application status updated to {status} successfully.",
             "application": application.to_dict_company()
         }), 200
 
@@ -695,6 +716,317 @@ def update_application_status(application_id):
             "error": str(e)
         })
 
-    
+
+@company_bp.route("/applications/<int:application_id>/schedule-round", methods=["PATCH"])
+@login_required
+@role_required("company")
+def schedule_recruitment_round(application_id):
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found."
+        }), 404
+
+    application = Application.query.join(PlacementDrive).filter(
+        Application.id == application_id,
+        PlacementDrive.company_id == company.id
+    ).first()
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    if application.status != "shortlisted":
+        return jsonify({
+            "success": False,
+            "message": "Recruitment can only be started for shortlisted applications."
+        }), 400
+
+    recruitment = application.recruitment_process
+
+    if not recruitment:
+        return jsonify({
+            "success": False,
+            "message": "Recruitment process not found."
+        }), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
+
+    round_number = data.get("round")
+    scheduled_at = data.get("scheduled_at")
+    meeting_details = data.get("meeting_details")
+    test_link = data.get("test_link")
+
+    if round_number not in [1, 2, 3, 4]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid round number."
+        }), 400
+
+    if not meeting_details and not test_link:
+        return jsonify({
+            "success": False,
+            "message": "Provide either meeting_details or test_link."
+        }), 400
+
+    if not scheduled_at:
+        return jsonify({
+            "success": False,
+            "message": "scheduled_at is required."
+        }), 400
+
+    is_required = getattr(application.drive,f"round{round_number}_required")
+
+    if not is_required:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} is not required for this placement drive."
+        }), 400
+
+    if getattr(recruitment, f"round{round_number}_completed"):
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} has already been completed."
+        }), 409
+
+    if recruitment.current_round > round_number:
+        return jsonify({
+            "success": False,
+            "message": "Cannot schedule a previous round."
+        }), 409
+
+    if round_number > 1:
+
+        previous_required = getattr(application.drive,f"round{round_number - 1}_required")
+
+        previous_completed = getattr(recruitment,f"round{round_number - 1}_completed")
+
+        if previous_required and not previous_completed:
+            return jsonify({
+                "success": False,
+                "message": f"Complete Round {round_number - 1} before scheduling Round {round_number}."
+            }), 409
+
+    setattr(recruitment,f"round{round_number}_scheduled_at",scheduled_at)
+    setattr(recruitment,f"round{round_number}_meeting_details",meeting_details)
+    setattr(recruitment,f"round{round_number}_test_link",test_link)
+    setattr(recruitment,f"round{round_number}_email_sent",False)
+
+    recruitment.current_round = round_number
+    recruitment.recruitment_status = "in_progress"
+
+    try:
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Round {round_number} scheduled successfully.",
+            "recruitment": recruitment.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to schedule round.",
+            "error": str(e)
+        }), 500
+
+
+@company_bp.route("/applications/<int:application_id>/round-result",methods=["PATCH"])
+@login_required
+@role_required("company")
+def update_round_result(application_id):
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found"
+        }), 404
+
+    application = Application.query.join(PlacementDrive).filter(
+        Application.id == application_id,
+        PlacementDrive.company_id == company.id).first()
+
+    student = application.student
+    drive = application.drive
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found"
+        }), 404
+
+    if application.status != "shortlisted":
+        return jsonify({
+            "success": False,
+            "message": "Only shortlisted applications can update round results"
+        }), 400
+
+    recruitment = application.recruitment_process
+
+    if not recruitment:
+        return jsonify({
+            "success": False,
+            "message": "Recruitment process not found."
+        }), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
+
+    round_number = data.get("round")
+    status = data.get("status")
+    company_notes = data.get("company_notes")
+
+    if round_number not in [1, 2, 3, 4]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid round number."
+        }), 400
+
+    if round_number > 1:
+
+        previous_required = getattr(
+            application.drive,
+            f"round{round_number-1}_required"
+        )
+
+        previous_completed = getattr(
+            recruitment,
+            f"round{round_number-1}_completed"
+        )
+
+        if previous_required and not previous_completed:
+            return jsonify({
+                "success": False,
+                "message": f"Round {round_number-1} must be completed first."
+            }), 409
+
+    if status not in ["passed","failed","skipped"]:
+        return jsonify({
+            "success": False,
+            "message": "not a valid status"
+        }), 400
+
+    required = getattr(application.drive,f"round{round_number}_required")
+
+    if not required:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} is not required for this placement drive."
+        }), 400
+
+    scheduled_at = getattr(recruitment,f"round{round_number}_scheduled_at")
+
+    if scheduled_at is None:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} has not been scheduled"
+        }), 400
+
+    completed = getattr(recruitment,f"round{round_number}_completed")
+
+    if completed:
+        return jsonify({
+            "success": False,
+            "message": "this round has already been updated"
+        }), 409
+
+    setattr(recruitment,f"round{round_number}_status",status)
+    setattr(recruitment,f"round{round_number}_completed",True)
+    setattr(recruitment,f"round{round_number}_completed_at",datetime.utcnow())
+
+    if company_notes:
+        application.company_notes = company_notes
+
+    if  status == "failed":
+
+        application.status = "rejected"
+        application.last_status_updated_by = "company"
+        recruitment.recruitment_status = "completed"
+
+        application.rejection_reason = (
+            f"Rejected in Round {round_number}"
+        )
+
+        log_activity(
+            user_id=session["user_id"],
+            role="company",
+            action="Rejected",
+            entity_type="Application",
+            entity_id=application.id,
+            description=f"{student.full_name} rejected in Round {round_number} for {drive.title}"
+        )
+
+    elif status == "skipped":
+        pass
+
+    elif status == "passed":
+
+        last_required_round = 0
+        for i in range(1,5):
+            if getattr(application.drive, f"round{i}_required"):
+                last_required_round = i
+
+        if round_number == last_required_round:
+            application.status = "selected"
+            application.last_status_updated_by = "company"
+            recruitment.recruitment_status = "completed"
+            recruitment.offer_letter_generated = False
+
+            log_activity(
+                user_id=session["user_id"],
+                role="company",
+                action="Shortlisted",
+                entity_type="Application",
+                entity_id=application.id,
+                description=f"{student.full_name} Selected for {drive.title}"
+            )
+
+        else:
+            application.status = "shortlisted"
 
     
+        
+
+    application.last_status_updated_by = "company"
+
+    try:
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Round {round_number} updated successfully.",
+            "application": application.to_dict_company(),
+            "recruitment": recruitment.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to update round.",
+            "error": str(e)
+        }), 500
+
+

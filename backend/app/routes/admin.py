@@ -337,3 +337,35 @@ def reject_drive(drive_id):
             "message": "Failed to reject placement drive",
             "error": str(e)
         }), 500
+
+
+@admin_bp.route("/jobs/daily-reminder",methods=["POST"])
+@login_required
+@role_required("admin")
+def run_daily_reminder():
+
+    from app.tasks.reminder_tasks import send_daily_reminders
+
+    task = send_daily_reminders.delay()
+
+    return jsonify({
+        "success":True,
+        "task_id":task.id,
+        "message":"Daily Reminder Started."
+    }),202
+
+
+@admin_bp.route("/jobs/monthly-report",methods=["POST"])
+@login_required
+@role_required("admin")
+def run_monthly_report():
+
+    from app.tasks.report_tasks import generate_monthly_report
+
+    task = generate_monthly_report.delay()
+
+    return jsonify({
+        "success":True,
+        "task_id":task.id,
+        "message":"Monthly Report Started."
+    }),202

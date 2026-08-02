@@ -9,6 +9,8 @@ from app.routes.company import company_bp
 from app.routes.admin import admin_bp
 from app.routes.recruitment_routes import recruitment_bp
 from app.routes.frontend import frontend_bp
+from app.routes.analytics import analytics_bp
+from app.routes.export_routes import export_bp
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -29,5 +31,7 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(recruitment_bp)
     app.register_blueprint(frontend_bp)
+    app.register_blueprint(analytics_bp)
+    app.register_blueprint(export_bp)
 
     return app

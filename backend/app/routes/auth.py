@@ -115,6 +115,7 @@ def login():
     
     session["user_id"] = user.id
     session["role"] = user.role
+    session["email"] = user.email
 
     return jsonify({
         "success": True,
@@ -145,6 +146,7 @@ def admin_test():
         "message": "Welcome Admin"
     }), 200
 
+
 @auth_bp.route("/logout",methods=["POST"])
 @login_required
 def logout():
@@ -155,3 +157,31 @@ def logout():
         "success": True,
         "message": "Logged out successfully"
     }), 200
+
+
+@auth_bp.route("/session",methods=["GET"])
+def check_session():
+
+    if "user_id" not in session:
+        return jsonify({
+            "authenticated": False
+        }), 200
+
+    user = User.query.filter_by(id=session["user_id"]).first()
+
+    if not user:
+        session.clear()
+        return jsonify({
+            "authenticated": False
+        }), 200
+
+    return jsonify({
+        "authenticated": True,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role
+        }
+    }), 200
+
+

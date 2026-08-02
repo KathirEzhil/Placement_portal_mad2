@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, send_file
+
+import os
 
 from app.extensions import db
 from app.models.student import Student
@@ -8,6 +10,7 @@ from app.models.application import Application
 from app.models.recruitment_process import RecruitmentProcess
 
 from app.utils.decorators import login_required, role_required
+from app.utils.activity_logger import log_activity
 
 student_bp = Blueprint("student",__name__,url_prefix="/student")
 
@@ -226,6 +229,15 @@ def apply_to_drive(drive_id):
             cover_letter=cover_letter
         )
 
+        log_activity(
+            user_id=session["user_id"],
+            role="student",
+            action="Applied",
+            entity_type="Application",
+            entity_id=application.id,
+            description=f"{student.full_name} applied to {drive.title}"
+        )
+
         db.session.add(application)
 
         db.session.flush()
@@ -372,3 +384,107 @@ def withdraw_application(application_id):
             "message": "Application withdrawn successfully",
             "application": application.to_dict_student()
         }), 200
+
+
+@student_bp.route("/applications/<int:application_id>/recruitment",methods=["GET"])
+@login_required
+@role_required("student")
+def get_recruitment_details(application_id):
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found."
+        }), 404
+
+    application = Application.query.filter_by(id=application_id,student_id=student.id).first()
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    recruitment = application.recruitment_process
+
+    if not recruitment:
+        return jsonify({
+            "success": False,
+            "message": "Recruitment process has not started."
+        }), 404
+
+    drive = application.drive
+
+    return jsonify({
+        "success": True,
+        "application": application.to_dict(),
+        "placement_drive": {
+            "id": drive.id,
+            "title": drive.title,
+            "company_name": drive.company.company_name,
+            "job_type": drive.job_type,
+            "location": drive.location,
+            "compensation": drive.compensation
+        },
+        "recruitment": recruitment.to_dict()
+    }), 200
+
+
+@student_bp.route("/applications/<int:application_id>/offer-letter", methods=["GET"])
+@login_required
+@role_required("student")
+def download_offer_letter(application_id):
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found"
+        }), 404
+
+    application = Application.query.filter_by(
+        id=application_id,
+        student_id=student.id
+    ).first()
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    recruitment = application.recruitment_process
+
+    if not recruitment:
+        return jsonify({
+            "success": False,
+            "message": "Recruitment process not found."
+        }), 404
+
+    if not recruitment.offer_letter_generated:
+        return jsonify({
+            "success": False,
+            "message": "Offer letter has not been generated yet."
+        }), 400
+
+    if not recruitment.offer_letter_path:
+        return jsonify({
+            "success": False,
+            "message": "Offer letter path not found."
+        }), 404
+
+    if not os.path.exists(recruitment.offer_letter_path):
+        return jsonify({
+            "success": False,
+            "message": "Offer letter file not found."
+        }), 404
+
+    return send_file(
+        recruitment.offer_letter_path,
+        as_attachment=True,
+        download_name=os.path.basename(recruitment.offer_letter_path),
+        mimetype="application/pdf"
+    )
