@@ -1,6 +1,12 @@
 from flask import Blueprint, request, jsonify, session
 from datetime import datetime,date
 
+import os
+from werkzeug.utils import secure_filename
+
+from flask import current_app
+from flask import send_from_directory
+
 from app.extensions import db
 from app.models.user import User
 from app.models.company import Company
@@ -15,6 +21,15 @@ company_bp = Blueprint("company",__name__,url_prefix="/company")
 
 VALID_APPLICATION_STATUSES = {"shortlisted","rejected"}
 
+ALLOWED_LOGO_EXTENSIONS = {"png","jpg","jpeg"}
+
+def allowed_logo(filename):
+
+    return (
+        "." in filename and
+        filename.rsplit(".",1)[1].lower() in ALLOWED_LOGO_EXTENSIONS
+    )
+
 
 @company_bp.route("/profile",methods=["GET"])
 @login_required
@@ -27,11 +42,13 @@ def get_profile():
     if company is None:
         return jsonify({
             "success": False,
+            "profile_exists": False,
             "message": "company profile not found"
         }), 404
     
     return jsonify({
         "success": True,
+        "profile_exists":True,
         "data":{
             "email": user.email,
             "company_name": company.company_name,
@@ -66,7 +83,7 @@ def update_profile():
     
     company_name = data.get("company_name","").strip()
     industry_type = data.get("industry_type")
-    company_domain = data.get("company_name")
+    company_domain = data.get("company_domain")
     website = data.get("website","").strip()
     company_size = data.get("company_size")
     logo = data.get("logo")
@@ -94,13 +111,13 @@ def update_profile():
             "message": "Website url is required"
         }), 400
     
-    if not (industry_type or company_domain):
+    if not industry_type or not company_domain:
         return jsonify({
             "success": False,
             "message": "Both insutry type and company_domain are required"
         }), 400
     
-    if not (hr_email or company_size):
+    if not hr_email or not company_size:
         return jsonify({
             "success": False,
             "message": "Both company_size and HR email id is required."
@@ -214,6 +231,17 @@ def create_drive():
     location = data.get("location", "").strip()
     required_skills = data.get("required_skills", "").strip()
     selection_process = data.get("selection_process", "").strip()
+    round1_required = data.get("round1_required", False)
+    round1_name = data.get("round1_name", "").strip()
+
+    round2_required = data.get("round2_required", False)
+    round2_name = data.get("round2_name", "").strip()
+
+    round3_required = data.get("round3_required", False)
+    round3_name = data.get("round3_name", "").strip()
+
+    round4_required = data.get("round4_required", False)
+    round4_name = data.get("round4_name", "").strip()
     eligibility_cgpa = data.get("eligibility_cgpa")
     drive_date = data.get("drive_date")
     last_date_to_apply = data.get("last_date_to_apply")
@@ -237,6 +265,50 @@ def create_drive():
         return jsonify({
             "success": False,
             "message": f"Missing required fields: {', '.join(missing_fields)}"
+        }), 400
+
+    rounds = [
+        (1, round1_required, round1_name),
+        (2, round2_required, round2_name),
+        (3, round3_required, round3_name),
+        (4, round4_required, round4_name),
+    ]
+
+    required_round_count = 0
+
+    for number, required, name in rounds:
+
+        if required:
+            required_round_count += 1
+
+            if not name:
+                return jsonify({
+                    "success": False,
+                    "message": f"Round {number} name is required."
+                }), 400
+
+    if required_round_count == 0:
+        return jsonify({
+            "success": False,
+            "message": "At least one recruitment round must be selected."
+        }), 400
+
+    if round2_required and not round1_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 1 must be enabled before Round 2."
+        }), 400
+
+    if round3_required and not round2_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 2 must be enabled before Round 3."
+        }), 400
+
+    if round4_required and not round3_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 3 must be enabled before Round 4."
         }), 400
     
     user_id = session["user_id"]
@@ -317,24 +389,35 @@ def create_drive():
         location=location,
         required_skills=required_skills,
         selection_process=selection_process,
+        round1_required=round1_required,
+        round1_name=round1_name,
+
+        round2_required=round2_required,
+        round2_name=round2_name,
+
+        round3_required=round3_required,
+        round3_name=round3_name,
+
+        round4_required=round4_required,
+        round4_name=round4_name,
         eligibility_cgpa=eligibility_cgpa,
         drive_date=drive_date,
         last_date_to_apply=last_date_to_apply,
         status="pending"
     )
 
-    log_activity(
-        user_id=session["user_id"],
-        role="company",
-        action="Created Drive",
-        entity_type="PlacementDrive",
-        entity_id=new_drive.id,
-        description=f"{company.company_name} created {new_drive.title}"
-    )
 
     try:
         db.session.add(new_drive)
         db.session.commit()
+
+        log_activity(
+            user_id=session["user_id"],
+            role="company",
+            action="Created Drive",
+            entity_type="PlacementDrive",
+            entity_id=new_drive.id,
+            description=f"{company.company_name} created {new_drive.title}")
     
     except Exception as e:
         db.session.rollback()
@@ -436,7 +519,7 @@ def update_drive(drive_id):
             "message": "Company profile not found"
         }), 404
     
-    drive = db,session.get(PlacementDrive,drive_id)
+    drive = db.session.get(PlacementDrive,drive_id)
 
     if not drive:
         return jsonify({
@@ -462,7 +545,7 @@ def update_drive(drive_id):
         return jsonify({
             "success": False,
             "message": "No input data provided"
-        })
+        }), 400
 
 
     title = data.get("title", "").strip()
@@ -475,6 +558,17 @@ def update_drive(drive_id):
     eligibility_cgpa = data.get("eligibility_cgpa")
     drive_date = data.get("drive_date")
     last_date_to_apply = data.get("last_date_to_apply")
+    round1_required = data.get("round1_required", False)
+    round1_name = data.get("round1_name", "").strip()
+
+    round2_required = data.get("round2_required", False)
+    round2_name = data.get("round2_name", "").strip()
+
+    round3_required = data.get("round3_required", False)
+    round3_name = data.get("round3_name", "").strip()
+
+    round4_required = data.get("round4_required", False)
+    round4_name = data.get("round4_name", "").strip()
 
     # again valiidate all the fields(okay to repeat the same for now)
 
@@ -511,6 +605,50 @@ def update_drive(drive_id):
             "success": False,
             "message": "Dates must be in YYYY-MM-DD format"
         }), 400
+
+    rounds = [
+        (1, round1_required, round1_name),
+        (2, round2_required, round2_name),
+        (3, round3_required, round3_name),
+        (4, round4_required, round4_name),
+    ]
+
+    required_round_count = 0
+
+    for number, required, name in rounds:
+
+        if required:
+            required_round_count += 1
+
+            if not name:
+                return jsonify({
+                    "success": False,
+                    "message": f"Round {number} name is required."
+                }), 400
+
+    if required_round_count == 0:
+        return jsonify({
+            "success": False,
+            "message": "At least one recruitment round must be selected."
+        }), 400
+
+    if round2_required and not round1_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 1 must be enabled before Round 2."
+        }), 400
+
+    if round3_required and not round2_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 2 must be enabled before Round 3."
+        }), 400
+
+    if round4_required and not round3_required:
+        return jsonify({
+            "success": False,
+            "message": "Round 3 must be enabled before Round 4."
+        }), 400
     
     # validate application deadline - deadline be before drive date
     if last_date_to_apply > drive_date:
@@ -539,12 +677,31 @@ def update_drive(drive_id):
     drive.location = location
     drive.required_skills = required_skills
     drive.selection_process = selection_process
+    drive.round1_required = round1_required
+    drive.round1_name = round1_name
+
+    drive.round2_required = round2_required
+    drive.round2_name = round2_name
+
+    drive.round3_required = round3_required
+    drive.round3_name = round3_name
+
+    drive.round4_required = round4_required
+    drive.round4_name = round4_name
     drive.eligibility_cgpa = eligibility_cgpa
     drive.drive_date = drive_date
     drive.last_date_to_apply = last_date_to_apply
 
     try:
-        db.session.commmit()
+        db.session.commit()
+        log_activity(
+        user_id=session["user_id"],
+        role="company",
+        action="Updated Drive",
+        entity_type="PlacementDrive",
+        entity_id=drive.id,
+        description=f"{company.company_name} updated {drive.title}"
+)
 
     except Exception as e:
         db.session.rollback()
@@ -553,7 +710,7 @@ def update_drive(drive_id):
             "success": False,
             "message": "Failed to update placement drive",
             "error": str(e)
-        })
+        }), 500
     
     return jsonify({
         "success":True,
@@ -1029,4 +1186,197 @@ def update_round_result(application_id):
             "error": str(e)
         }), 500
 
+
+print("Dashboard route loaded")
+
+# @company_bp.route("/dashboard", methods=["GET"])
+# def company_dashboard():
+#     return jsonify({
+#         "success": True,
+#         "message": "Dashboard working"
+#     })
+
+@company_bp.route("/dashboard", methods=["GET"])
+@login_required
+@role_required("company")
+def company_dashboard():
+
+    
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found.",
+            "profile_exists": False
+        }), 404
+
+    # Statistics
+    total_drives = PlacementDrive.query.filter_by(company_id=company.id).count()
+
+    pending_drives = PlacementDrive.query.filter_by(
+        company_id=company.id,
+        status="pending"
+    ).count()
+
+    approved_drives = PlacementDrive.query.filter_by(
+        company_id=company.id,
+        status="approved"
+    ).count()
+
+    total_applications = (
+        db.session.query(Application)
+        .join(PlacementDrive)
+        .filter(PlacementDrive.company_id == company.id)
+        .count()
+    )
+
+    shortlisted = (
+        db.session.query(Application)
+        .join(PlacementDrive)
+        .filter(
+            PlacementDrive.company_id == company.id,
+            Application.status == "shortlisted"
+        )
+        .count()
+    )
+
+    selected = (
+        db.session.query(Application)
+        .join(PlacementDrive)
+        .filter(
+            PlacementDrive.company_id == company.id,
+            Application.status == "selected"
+        )
+        .count()
+    )
+
+    recent_drives = (
+        PlacementDrive.query
+        .filter_by(company_id=company.id)
+        .order_by(PlacementDrive.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    return jsonify({
+
+        "success": True,
+        "profile_exists": True,
+
+        "company": {
+            "company_name": company.company_name,
+            "approval_status": company.approval_status,
+            "logo": company.logo
+        },
+
+        "stats": {
+            "total_drives": total_drives,
+            "pending_drives": pending_drives,
+            "approved_drives": approved_drives,
+            "total_applications": total_applications,
+            "shortlisted": shortlisted,
+            "selected": selected
+        },
+
+        "recent_drives": [
+            drive.to_dict() for drive in recent_drives
+        ]
+
+    }), 200
+
+
+@company_bp.route("/upload-logo", methods=["POST"])
+@login_required
+@role_required("company")
+def upload_logo():
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found."
+        }),404
+
+    if "logo" not in request.files:
+        return jsonify({
+            "success": False,
+            "message": "No logo received."
+        }),400
+
+    file = request.files["logo"]
+
+    if file.filename == "":
+        return jsonify({
+            "success": False,
+            "message": "No file selected."
+        }),400
+
+    if not allowed_logo(file.filename):
+        return jsonify({
+            "success": False,
+            "message": "Only PNG, JPG and JPEG files are allowed."
+        }),400
+
+    # Delete old logo
+    if company.logo:
+
+        old_logo = os.path.join(
+            current_app.config["LOGO_UPLOAD_FOLDER"],
+            company.logo
+        )
+
+        if os.path.exists(old_logo):
+            os.remove(old_logo)
+
+    filename = secure_filename(file.filename)
+
+    extension = filename.rsplit(".",1)[1].lower()
+
+    new_filename = f"company_{company.id}_logo.{extension}"
+
+    file.save(
+        os.path.join(
+            current_app.config["LOGO_UPLOAD_FOLDER"],
+            new_filename
+        )
+    )
+
+    company.logo = new_filename
+
+    db.session.commit()
+
+    return jsonify({
+
+        "success": True,
+        "message": "Logo uploaded successfully.",
+        "filename": new_filename
+
+    }),200
+
+
+@company_bp.route("/view-logo", methods=["GET"])
+@login_required
+@role_required("company")
+def view_logo():
+
+    company = Company.query.filter_by(user_id=session["user_id"]).first()
+
+    if not company or not company.logo:
+
+        return jsonify({
+            "success": False,
+            "message": "Logo not found."
+        }),404
+
+    return send_from_directory(
+
+        current_app.config["LOGO_UPLOAD_FOLDER"],
+
+        company.logo,
+
+        as_attachment=False
+
+    )
 

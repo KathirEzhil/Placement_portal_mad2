@@ -254,19 +254,19 @@ def get_branch_statistics(year):
         selected = branch.selected or 0
         average_cgpa = round(branch.average_cgpa or 0,2)
 
-    placement_percentage = 0
+        placement_percentage = 0
 
-    if students > 0:
-        placement_percentage = round((selected/students)*100,2)
+        if students > 0:
+            placement_percentage = round((selected/students)*100,2)
 
-    statistics.append({
-        "branch": branch.branch,
-        "students": students,
-        "applications": applications,
-        "selected": selected,
-        "placement_percentage": placement_percentage,
-        "average_cgpa": average_cgpa
-    })
+        statistics.append({
+            "branch": branch.branch,
+            "students": students,
+            "applications": applications,
+            "selected": selected,
+            "placement_percentage": placement_percentage,
+            "average_cgpa": average_cgpa
+        })
 
     statistics.sort(key=lambda branch: branch["placement_percentage"], reverse=True)
 
@@ -294,43 +294,70 @@ def get_package_statistics(year):
     for drive in drives:
 
         package = extract_lpa(drive.compensation)
+
         if package is not None:
+
             package_values.append(package)
-        if drive.job_type == "internship":
+
+
+        if drive.job_type == "Internship":
+
             internship_count += 1
-        elif drive.job_type == "full_time":
+
+
+        elif drive.job_type == "Full-Time":
+
             full_time_count += 1
-        elif drive.job_type == "intern_ft":
+
+
+        elif drive.job_type == "Full-Time + Internship":
+
             intern_ft_count += 1
 
+
     highest_package = 0
+
     average_package = 0
+
     median_package = 0
+
 
     if package_values:
 
         highest_package = max(package_values)
 
         average_package = round(
+
             sum(package_values) / len(package_values),
+
             2
+
         )
 
         median_package = round(
+
             median(package_values),
+
             2
+
         )
 
+
     return {
+
         "highest_package": highest_package,
+
         "average_package": average_package,
+
         "median_package": median_package,
+
         "internship_drives": internship_count,
+
         "full_time_drives": full_time_count,
+
         "intern_and_ft_drives": intern_ft_count
+
     }
-
-
 def get_drive_performance(year):
 
     drives = (
@@ -368,31 +395,31 @@ def get_drive_performance(year):
             status="withdrawn"
         ).count()
 
-    success_rate = 0
+        success_rate = 0
 
-    if applications > 0:
-        success_rate = round((selected / applications) * 100,2)
+        if applications > 0:
+            success_rate = round((selected / applications) * 100,2)
 
-    performance.append({
-        "drive_id": drive.id,
-        "company_name": drive.company.company_name,
-        "title": drive.title,
-        "job_type": drive.job_type,
-        "location": drive.location,
-        "compensation": drive.compensation,
-        "applications": applications,
-        "shortlisted": shortlisted,
-        "selected": selected,
-        "rejected": rejected,
-        "withdrawn": withdrawn,
-        "success_rate": success_rate,
-        "status": drive.status,
-        "last_date_to_apply": (
-            drive.last_date_to_apply.isoformat()
-            if drive.last_date_to_apply
-            else None
-        )
-    })
+        performance.append({
+            "drive_id": drive.id,
+            "company_name": drive.company.company_name,
+            "title": drive.title,
+            "job_type": drive.job_type,
+            "location": drive.location,
+            "compensation": drive.compensation,
+            "applications": applications,
+            "shortlisted": shortlisted,
+            "selected": selected,
+            "rejected": rejected,
+            "withdrawn": withdrawn,
+            "success_rate": success_rate,
+            "status": drive.status,
+            "last_date_to_apply": (
+                drive.last_date_to_apply.isoformat()
+                if drive.last_date_to_apply
+                else None
+            )
+        })
 
     performance.sort(key=lambda drive: drive["applications"],reverse=True)
 
@@ -402,7 +429,7 @@ def get_drive_performance(year):
 def get_recent_activities(limit=20):
 
     activities = (
-        ActivityLog.quer
+        ActivityLog.query
         .order_by(ActivityLog.created_at.desc())
         .limit(limit)
         .all()
@@ -451,7 +478,7 @@ def get_admin_insights(year):
         "title": "Highest Package",
         "message": (
             f"Highest package offered is "
-            f"{package_statistics['highest_package']['display']}."
+            f"{package_statistics['highest_package']} LPA."
         )
     })
 

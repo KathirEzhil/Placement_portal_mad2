@@ -24,7 +24,7 @@ from app.services.analytics_services import get_student_analytics
 analytics_bp = Blueprint("analytics",__name__,url_prefix="/analytics")
 
 
-@analytics_bp.route("admin/dashboard", methods=["GET"])
+@analytics_bp.route("/admin/dashboard", methods=["GET"])
 @login_required
 @role_required("admin")
 def admin_dashboard():

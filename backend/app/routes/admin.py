@@ -1,6 +1,11 @@
+import os
+from flask import current_app, send_file
+
 from flask import Blueprint, jsonify, request
 from app.models import Company
 from app.models import PlacementDrive
+from app.models import Student
+from app.models import Application
 
 from app.extensions import db
 from app.utils.decorators import login_required, role_required
@@ -47,7 +52,7 @@ def get_pending_companies():
 @role_required("admin")
 def get_company(company_id):
 
-    company = Company.session.get(Company,company_id)
+    company = db.session.get(Company,company_id)
 
     if company is None:
         return jsonify({
@@ -183,7 +188,7 @@ def reject_company(company_id):
 @role_required("admin")
 def get_pending_drives():
 
-    pending = PlacementDrive.query.filter_by(approval_status = "pending").all()
+    pending = PlacementDrive.query.filter_by(status = "pending").all()
 
     if not pending:
         return jsonify({
@@ -196,7 +201,7 @@ def get_pending_drives():
 
     return jsonify({
         "success": True,
-        "companies": pending_drives_data
+        "drives": pending_drives_data
     }), 200
 
 
@@ -337,6 +342,366 @@ def reject_drive(drive_id):
             "message": "Failed to reject placement drive",
             "error": str(e)
         }), 500
+
+
+# ======= student management =========
+
+
+@admin_bp.route("/students", methods=["GET"])
+@login_required
+@role_required("admin")
+def get_students():
+
+    students = Student.query.order_by(
+        Student.created_at.desc()
+    ).all()
+
+    student_data = []
+
+    for student in students:
+
+        applications = Application.query.filter_by(
+            student_id=student.id
+        ).all()
+
+        application_count = len(applications)
+
+        selected_count = sum(
+            1
+            for application in applications
+            if application.status == "selected"
+        )
+
+        student_data.append({
+
+            "id": student.id,
+
+            "full_name": student.full_name,
+
+            "college_email": student.college_email,
+
+            "personal_email": student.personal_email,
+
+            "roll_number": student.roll_number,
+
+            "graduation_year": student.graduation_year,
+
+            "skills": student.skills,
+
+            "college_name": student.college_name,
+
+            "stream": student.stream,
+
+            "branch": student.branch,
+
+            "cgpa": student.cgpa,
+
+            "phone": student.phone,
+
+            "year": student.year,
+
+            "resume": student.resume,
+
+            "application_count": application_count,
+
+            "selected_count": selected_count,
+
+            "placement_status": (
+                "Placed"
+                if selected_count > 0
+                else (
+                    "Applied"
+                    if application_count > 0
+                    else "Not Placed"
+                )
+            ),
+
+            "created_at": (
+                student.created_at.isoformat()
+                if student.created_at
+                else None
+            )
+
+        })
+
+    return jsonify({
+
+        "success": True,
+
+        "count": len(student_data),
+
+        "students": student_data
+
+    }), 200
+
+
+@admin_bp.route(
+    "/student/<int:student_id>",
+    methods=["GET"]
+)
+@login_required
+@role_required("admin")
+def get_student_details(student_id):
+
+    student = db.session.get(
+        Student,
+        student_id
+    )
+
+    if not student:
+
+        return jsonify({
+
+            "success": False,
+
+            "message": "Student not found."
+
+        }), 404
+
+    applications = Application.query.filter_by(
+        student_id=student.id
+    ).all()
+
+    selected_count = sum(
+        1
+        for application in applications
+        if application.status == "selected"
+    )
+
+    student_data = {
+
+        "id": student.id,
+
+        "full_name": student.full_name,
+
+        "college_email": student.college_email,
+
+        "personal_email": student.personal_email,
+
+        "roll_number": student.roll_number,
+
+        "graduation_year": student.graduation_year,
+
+        "skills": student.skills,
+
+        "linkedin_url": student.linkedin_url,
+
+        "github_url": student.github_url,
+
+        "portfolio_url": student.portfolio_url,
+
+        "permanent_address": student.permanent_address,
+
+        "college_name": student.college_name,
+
+        "stream": student.stream,
+
+        "branch": student.branch,
+
+        "cgpa": student.cgpa,
+
+        "phone": student.phone,
+
+        "year": student.year,
+
+        "resume": student.resume,
+
+        "application_count": len(applications),
+
+        "selected_count": selected_count,
+
+        "placement_status": (
+            "Placed"
+            if selected_count > 0
+            else (
+                "Applied"
+                if applications
+                else "Not Placed"
+            )
+        ),
+
+        "created_at": (
+            student.created_at.isoformat()
+            if student.created_at
+            else None
+        )
+
+    }
+
+    return jsonify({
+
+        "success": True,
+
+        "student": student_data
+
+    }), 200
+
+
+@admin_bp.route(
+    "/student/<int:student_id>/applications",
+    methods=["GET"]
+)
+@login_required
+@role_required("admin")
+def get_student_applications(student_id):
+
+    student = db.session.get(
+        Student,
+        student_id
+    )
+
+    if not student:
+
+        return jsonify({
+
+            "success": False,
+
+            "message": "Student not found."
+
+        }), 404
+
+    applications = Application.query.filter_by(
+        student_id=student.id
+    ).order_by(
+        Application.applied_at.desc()
+    ).all()
+
+    application_data = []
+
+    for application in applications:
+
+        application_data.append({
+
+            "id": application.id,
+
+            "student_id": application.student_id,
+
+            "drive_id": application.drive_id,
+
+            "drive_title": (
+                application.drive.title
+                if application.drive
+                else None
+            ),
+
+            "company_name": (
+                application.drive.company.company_name
+                if application.drive
+                and application.drive.company
+                else None
+            ),
+
+            "location": (
+                application.drive.location
+                if application.drive
+                else None
+            ),
+
+            "job_type": (
+                application.drive.job_type
+                if application.drive
+                else None
+            ),
+
+            "compensation": (
+                application.drive.compensation
+                if application.drive
+                else None
+            ),
+
+            "resume_used": application.resume_used,
+
+            "cover_letter": application.cover_letter,
+
+            "status": application.status,
+
+            "company_notes": application.company_notes,
+
+            "rejection_reason": (
+                application.rejection_reason
+            ),
+
+            "recruitment_status": (
+                application.recruitment_process
+                .recruitment_status
+                if application.recruitment_process
+                else "not_started"
+            ),
+
+            "current_round": (
+                application.recruitment_process
+                .current_round
+                if application.recruitment_process
+                else 0
+            ),
+
+            "applied_at": (
+                application.applied_at.isoformat()
+                if application.applied_at
+                else None
+            ),
+
+            "updated_at": (
+                application.updated_at.isoformat()
+                if application.updated_at
+                else None
+            )
+
+        })
+
+    return jsonify({
+
+        "success": True,
+
+        "count": len(application_data),
+
+        "applications": application_data
+
+    }), 200
+
+
+@admin_bp.route(
+    "/student/<int:student_id>/resume",
+    methods=["GET"]
+)
+@login_required
+@role_required("admin")
+def view_student_resume(student_id):
+
+    student = db.session.get(Student, student_id)
+
+    if not student:
+
+        return jsonify({
+            "success": False,
+            "message": "Student not found."
+        }), 404
+
+    if not student.resume:
+
+        return jsonify({
+            "success": False,
+            "message": "Student has not uploaded a resume."
+        }), 404
+
+    resume_path = os.path.join(
+        current_app.config["RESUME_UPLOAD_FOLDER"],
+        student.resume
+    )
+
+    if not os.path.exists(resume_path):
+
+        return jsonify({
+            "success": False,
+            "message": "Resume file not found."
+        }), 404
+
+    return send_file(
+        resume_path,
+        as_attachment=False,
+        download_name=student.resume
+    )
+
 
 
 @admin_bp.route("/jobs/daily-reminder",methods=["POST"])

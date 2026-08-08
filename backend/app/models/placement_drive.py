@@ -67,4 +67,5 @@ class PlacementDrive(db.Model):
             "status": self.status,
             "rejection_reason": self.rejection_reason,
             "created_at": self.created_at.isoformat(),
+            "company_name": self.company.company_name,
         }

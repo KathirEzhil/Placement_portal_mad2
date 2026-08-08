@@ -57,8 +57,9 @@ def generate_monthly_report():
 
         """
     send_email(
-        recipient="admin@gmail.com",
         subject="Monthly Placement Report",
+        recipients=["kathirezhil2310288@ssn.edu.in"],
+        body="Your monthly placement report is attached below.",
         html=html
     )
 

@@ -22,6 +22,14 @@ def create_app():
         static_folder=os.path.join(BASE_DIR, "frontend", "assets"))
     
     app.config.from_object(Config)
+    app.config["RESUME_UPLOAD_FOLDER"] = Config.RESUME_UPLOAD_FOLDER
+
+    os.makedirs(app.config["RESUME_UPLOAD_FOLDER"], exist_ok=True)
+
+    app.config["LOGO_UPLOAD_FOLDER"] = Config.LOGO_UPLOAD_FOLDER
+
+    os.makedirs(app.config["LOGO_UPLOAD_FOLDER"], exist_ok=True)        
+
     db.init_app(app)
     mail.init_app(app)
 
@@ -33,5 +41,7 @@ def create_app():
     app.register_blueprint(frontend_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(export_bp)
+
+    
 
     return app

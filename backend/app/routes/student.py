@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify, session, send_file
+from flask import current_app
+from flask import send_from_directory
 
 import os
+from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.student import Student
@@ -11,6 +14,16 @@ from app.models.recruitment_process import RecruitmentProcess
 
 from app.utils.decorators import login_required, role_required
 from app.utils.activity_logger import log_activity
+
+
+ALLOWED_EXTENSIONS = {"pdf","docx","doc"}
+
+def allowed_file(filename):
+    return (
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
+
 
 student_bp = Blueprint("student",__name__,url_prefix="/student")
 
@@ -25,11 +38,33 @@ def get_profile():
 
     if not student:
         return jsonify({
-            "success": False,
-            "message": "Student profile not found"
+            "success": True,
+            "profile_exists": False,
+            "data":{
+                "email": user.email,
+                "college_email":"",
+                "personal_email":"",
+                "full_name":"",
+                "roll_number":"",
+                "graduation_year":"",
+                "skills":"",
+                "linkedin_url":"",
+                "github_url":"",
+                "portfolio_url":"",
+                "permanent_address":"",
+                "college_name":"",
+                "stream":"",
+                "branch":"",
+                "cgpa":"",
+                "phone":"",
+                "year":"",
+                "resume":""
+            }
         }), 404
+    
     return jsonify({
         "success": True,
+        "profile_exists": True,
         "data":{
             "email": user.email,
             "college_email": student.college_email,
@@ -82,7 +117,7 @@ def update_profile():
     cgpa = data.get("cgpa")
     phone = data.get("phone")
     year = data.get("year")
-    resume = data.get("resume")
+    # resume = data.get("resume")
 
     if not all([college_email,roll_number,full_name,college_name,stream,branch,cgpa,phone,year]):
         return jsonify({
@@ -141,13 +176,14 @@ def update_profile():
             cgpa = cgpa,
             phone = phone,
             year = year,
-            resume = resume
+            # resume = resume
         )
         db.session.add(student)
 
     else:
         student.college_email = college_email
         student.personal_email = personal_email
+        student.roll_number = roll_number
         student.college_name = college_name
         student.full_name = full_name
         student.graduation_year = graduation_year
@@ -161,7 +197,7 @@ def update_profile():
         student.cgpa = cgpa
         student.phone = phone
         student.year = year
-        student.resume = resume
+        # student.resume = resume
 
     try:
         db.session.commit()
@@ -177,6 +213,169 @@ def update_profile():
             "message": "Failed to update profile.",
             "error": str(e)
         }), 500
+
+
+@student_bp.route("/upload-resume", methods=["POST"])
+@login_required
+@role_required("student")
+def upload_resume():
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found"
+        }),404
+
+
+    if "resume" not in request.files:
+        return jsonify({
+            "success": False,
+            "message": "No file received."
+        }),400
+
+
+    file = request.files["resume"]
+
+
+    if file.filename == "":
+
+        return jsonify({
+            "success": False,
+            "message": "No file selected."
+        }),400
+
+
+    if not allowed_file(file.filename):
+
+        return jsonify({
+            "success": False,
+            "message": "Only PDF and docx files are allowed."
+        }),400
+
+    # Delete old resume if it exists
+    
+    if student.resume:
+        old_file = os.path.join(current_app.config["RESUME_UPLOAD_FOLDER"],student.resume)
+        if os.path.exists(old_file):
+            os.remove(old_file)
+
+    filename = secure_filename(file.filename)
+
+    extension = filename.rsplit(".",1)[1]
+
+    new_filename = f"student_{student.id}_resume.{extension}"
+
+    file_path = os.path.join(current_app.config["RESUME_UPLOAD_FOLDER"],new_filename)
+
+    file.save(file_path)
+
+    student.resume = new_filename
+    db.session.commit()
+    print("Resume in DB:", student.resume)
+
+    return jsonify({
+        "success": True,
+        "message": "Resume uploaded successfully.",
+        "filename": new_filename
+    }),200
+
+
+@student_bp.route("/view-resume", methods=["GET"])
+@login_required
+@role_required("student")
+def view_resume():
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student or not student.resume:
+
+        return jsonify({
+            "success": False,
+            "message": "Resume not found."
+        }),404
+
+    file_path = os.path.join(
+        current_app.config["RESUME_UPLOAD_FOLDER"],
+        student.resume
+    )
+
+    print(file_path)
+    print(os.path.exists(file_path))
+
+    if not os.path.exists(file_path):
+        return jsonify({
+            "success": False,
+            "message": "Resume file missing.",
+            "path": file_path
+        }),404
+
+    return send_file(
+        file_path,
+        mimetype="application/pdf",
+        as_attachment=False
+    )
+
+
+@student_bp.route("/drives", methods=["GET"])
+@login_required
+@role_required("student")
+def get_all_drives():
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found."
+        }), 404
+
+    drives = PlacementDrive.query.filter_by(
+        status="approved"
+    ).order_by(
+        PlacementDrive.last_date_to_apply.asc()
+    ).all()
+
+    return jsonify({
+        "success": True,
+        "count": len(drives),
+        "drives": [drive.to_dict() for drive in drives]
+    }), 200
+
+
+
+@student_bp.route("/drives/<int:drive_id>", methods=["GET"])
+@login_required
+@role_required("student")
+def get_drive(drive_id):
+
+    student = Student.query.filter_by(user_id=session["user_id"]).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found."
+        }), 404
+
+    drive = PlacementDrive.query.get(drive_id)
+
+    if not drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found."
+        }), 404
+
+    if drive.status != "approved":
+        return jsonify({
+            "success": False,
+            "message": "This placement drive is not available."
+        }), 400
+
+    return jsonify({
+        "success": True,
+        "drive": drive.to_dict()
+    }), 200
         
 
 @student_bp.route("/drives/<int:drive_id>/apply",methods=["POST"])

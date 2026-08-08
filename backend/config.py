@@ -14,6 +14,10 @@ class Config:
 
     OFFER_LETTER_FOLDER = "uploads/offer_letters"
 
+    RESUME_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "resumes")
+
+    LOGO_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "logos")
+
     MAIL_SERVER = "smtp.gmail.com"
     MAIL_PORT = 587
     MAIL_USE_TLS = True
