@@ -32,12 +32,6 @@ const studentDashboardData = {
             progress: 35
         },
 
-        {
-            company: "Zoho",
-            stage: "HR Interview",
-            progress: 90
-        }
-
     ],
 
     journey: [

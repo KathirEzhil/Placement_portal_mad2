@@ -4,6 +4,9 @@ const app = Vue.createApp({
         return{
             appName: "PLACEMENT PARK",
             currentPage: "landing",
+            
+            editingDriveId: null,
+            selectedDriveId: null,
 
             features: [
 
@@ -29,6 +32,12 @@ const app = Vue.createApp({
             showFeatures: true,
 
             isLoggedIn: false,
+
+            student: null,
+
+            company: null,
+
+            admin: null,
 
             currentUser: null,
 
@@ -61,6 +70,14 @@ const app = Vue.createApp({
         toggleLogin(){
 
             this.isLoggedIn = !this.isLoggedIn;
+
+        },
+
+        openApplicants(driveId) {
+
+            this.selectedDriveId = driveId;
+
+            this.currentPage = "applicants";
 
         },
 
@@ -177,7 +194,22 @@ const app = Vue.createApp({
 
         navigate(page) {
 
+            if (page === "create-drive") {
+
+                this.editingDriveId = null;
+
+            }
+
             this.currentPage = page;
+
+        },
+
+        startEditDrive(driveId) {
+
+            this.editingDriveId = driveId;
+
+            this.currentPage = "create-drive";
+
         }
     },
 
@@ -226,15 +258,19 @@ const app = Vue.createApp({
             @logout="logout">
         </navbar-component>
 
-        <div class="d-flex">
+        <div class="app-layout">
 
-            <sidebar-component
-                :current-user="currentUser"
-                :current-page="currentPage"
-                @navigate="navigate">
-            </sidebar-component>
+            <div class="sidebar-wrapper">
 
-            <div class="flex-grow-1 p-3">
+                <sidebar-component
+                    :current-user="currentUser"
+                    :current-page="currentPage"
+                    :company="company"
+                    @navigate="navigate">
+                </sidebar-component>
+            </div>
+
+            <div class="main-content">
 
                 <student-dashboard
                     v-if="currentUser.role==='student' &&
@@ -242,18 +278,83 @@ const app = Vue.createApp({
                     :current-user="currentUser">
                 </student-dashboard>
 
+                <student-profile v-if="currentUser.role==='student' && currentPage==='profile'"></student-profile>
+                <student-placement-drives v-if="currentUser.role==='student' && currentPage==='drives'"></student-placement-drives>
+
                 <company-dashboard
                     v-if="currentUser.role==='company' &&
-                           currentPage==='dashboard'">
+                        currentPage==='dashboard'"
+                    @navigate="currentPage = $event"
+                    @company-loaded="company = $event">
                 </company-dashboard>
+
+                <company-profile
+                    v-if="currentUser.role==='company' &&
+                        currentPage==='profile'">
+                </company-profile>
+
+                <company-create-drive
+                    v-if="currentUser.role==='company' &&
+                        currentPage==='create-drive'"
+                    :edit-drive-id="editingDriveId"
+                    @navigate="currentPage = $event">
+                </company-create-drive>
+
+                <company-manage-drives
+                    v-if="currentUser.role==='company' &&
+                        currentPage==='manage-drives'"
+                    @navigate="currentPage=$event"
+                    @edit-drive="startEditDrive"
+                    @open-applicants="openApplicants">
+                </company-manage-drives>
+
+                <company-applicants
+
+                    v-if="currentUser.role === 'company' &&
+                        currentPage === 'applicants'"
+
+                    :drive-id="selectedDriveId"
+
+                    @navigate="currentPage = $event">
+
+                </company-applicants>
+
+
+                <!-- Admin -->
 
                 <admin-dashboard
                     v-if="currentUser.role==='admin' &&
-                           currentPage==='dashboard'">
+                        currentPage==='dashboard'"
+                    @navigate="navigate">
                 </admin-dashboard>
-            </div>
-        </div>
-    </template>
+
+                <company-approvals
+                    v-else-if="currentUser.role==='admin' &&
+                            currentPage==='approve-companies'">
+                </company-approvals>
+
+                <drive-approvals
+                    v-else-if="currentUser.role==='admin' &&
+                            currentPage==='approve-drives'">
+                </drive-approvals>
+
+                <student-management
+                    v-if="currentUser.role==='admin' &&
+                        currentPage==='students'">
+                </student-management>
+
+                <admin-analytics
+                    v-else-if="currentUser.role==='admin' &&
+                            currentPage==='analytics'">
+                </admin-analytics>
+
+                <admin-reports
+                    v-else-if="currentUser.role==='admin' &&
+                            currentPage==='reports'">
+                </admin-reports>
+                            </div>
+                        </div>
+                    </template>
 
     `,
     
@@ -264,17 +365,73 @@ app.component("login-page", LoginPage);
 app.component("register-page", RegisterPage);
 
 app.component("student-dashboard", StudentDashboard);
-app.component("company-dashboard", CompanyDashboard);
+
 app.component("admin-dashboard", AdminDashboard);
 
+app.component("company-dashboard",CompanyDashboard);
+app.component("company-profile", CompanyProfile);
+
+app.component("company-hero",CompanyHero);
+app.component("company-create-drive", CompanyCreateDrive);
+app.component("company-manage-drives",CompanyManageDrives);
+
+// common components
 app.component("navbar-component", Navbar);
 app.component("sidebar-component", Sidebar);
+app.component("search-bar", SearchBar);
+app.component("pagination-component",Pagination);
 
+app.component("drive-card", DriveCard);
+
+// student pages
 app.component("dashboard-hero", DashboardHero);
 app.component("stat-card", StatCard);
 app.component("placement-calendar", placementCalendar);
 app.component("recruitment-progress", RecruitmentProgress);
+app.component("student-profile", StudentProfile);
+app.component("student-placement-drives", StudentPlacementDrives);
 
+
+
+app.component("admin-hero", AdminHero);
+app.component("admin-stats", AdminStats);
+app.component("quick-actions", QuickActions);
+app.component("approval-card",ApprovalCard);
+
+app.component("company-filters",CompanyFilters);
+
+
+
+app.component("company-approvals", CompanyApprovals)
+app.component("pending-companies", PendingCompanies);
+app.component("pending-drives",PendingDrives);
+
+
+app.component(
+    "drive-approvals",
+    DriveApprovals
+);
+
+app.component(
+    "student-management",
+    StudentManagement
+);
+
+app.component(
+    "admin-analytics",
+    AdminAnalytics
+);
+
+
+app.component(
+    "admin-reports",
+    AdminReports
+);
+
+app.component(
+    "company-applicants",
+    CompanyApplicants
+);
 
 app.mount("#app");
 

@@ -25,11 +25,16 @@ const DashboardHero = {
                     </button>
                 </div>
 
-                <div class="col-lg-5 text-center">
-                    <img
-                        src="assets/images/illustrations/student_dashboard.png"
-                        class="img-fluid"
-                        style="max-height:180px;width: auto;">
+                <div class="col-lg-5 d-flex justify-content-center align-items-center position-relative">
+
+                    <i class="bi bi-person-workspace text-primary"
+                    style="font-size:150px;">
+                    </i>
+
+                    <i class="bi bi-stars text-warning position-absolute"
+                    style="font-size:40px; top:20px; right:120px;">
+                    </i>
+
                 </div>
             </div>
         </div>
