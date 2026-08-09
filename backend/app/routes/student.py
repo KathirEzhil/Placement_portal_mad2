@@ -157,6 +157,14 @@ def update_profile():
             "message": "Roll number already exists."
         }), 409
 
+    existing_student_with_same_mobile_no = Student.query.filter_by(phone = phone).first()
+
+    if existing_student_with_same_mobile_no and existing_student_with_same_mobile_no.user_id != user.id:
+        return jsonify({
+            "success": False,
+            "message": "Mobile phone number already exists for a different person"
+        }), 409
+
     if student is None:
         student = Student(
             user_id = user.id,
@@ -221,8 +229,9 @@ def update_profile():
 def upload_resume():
 
     student = Student.query.filter_by(user_id=session["user_id"]).first()
+    user = User.query.get(session["user_id"])
 
-    if not student:
+    if not user:
         return jsonify({
             "success": False,
             "message": "Student profile not found"
@@ -256,7 +265,7 @@ def upload_resume():
 
     # Delete old resume if it exists
     
-    if student.resume:
+    if student and student.resume:
         old_file = os.path.join(current_app.config["RESUME_UPLOAD_FOLDER"],student.resume)
         if os.path.exists(old_file):
             os.remove(old_file)
@@ -414,38 +423,75 @@ def apply_to_drive(drive_id):
     existing_application = Application.query.filter_by(student_id=student.id,drive_id=drive.id).first()
 
     if existing_application:
-        return jsonify({
-            "message": "You have already applied for this placement drive"
-        }), 409
+
+        if existing_application.status != "withdrawn":
+            return jsonify({
+                "success": False,
+                "message": "You have already applied for this placement drive"
+            }), 409
+
+        recruitment_process = existing_application.recruitment_process
+
+        if not recruitment_process:
+
+            return jsonify({
+                "success": False,
+                "message": "Recruitment process not found."
+            }), 404
+
+
+        if recruitment_process.recruitment_status != "not_started":
+
+            return jsonify({
+                "success": False,
+                "message": "You cannot reapply because the recruitment process has already started."
+            }), 400
 
     try:
         cover_letter = request.json.get("cover_letter")
 
-        application = Application(
-            student_id=student.id,
-            drive_id=drive.id,
-            resume_used=student.resume,
-            cover_letter=cover_letter
-        )
+        if existing_application:
 
-        log_activity(
-            user_id=session["user_id"],
-            role="student",
-            action="Applied",
-            entity_type="Application",
-            entity_id=application.id,
-            description=f"{student.full_name} applied to {drive.title}"
-        )
+            application = existing_application
 
-        db.session.add(application)
+            application.status = "applied"
 
-        db.session.flush()
+            application.cover_letter = cover_letter
 
-        recruitmentprocess = RecruitmentProcess(application_id=application.id)
+            application.resume_used = student.resume
 
-        db.session.add(recruitmentprocess)
+            application.last_status_updated_by = "student"
+
+        else:
+            application = Application(
+                student_id=student.id,
+                drive_id=drive.id,
+                resume_used=student.resume,
+                cover_letter=cover_letter
+            )
+
+            db.session.add(application)
+
+            db.session.flush()
+
+            log_activity(
+                user_id=session["user_id"],
+                role="student",
+                action="Applied",
+                entity_type="Application",
+                entity_id=application.id,
+                description=f"{student.full_name} applied to {drive.title}"
+            )
+
+            recruitmentprocess = RecruitmentProcess(
+                application_id=application.id
+            )
+
+            db.session.add(recruitmentprocess)
 
         db.session.commit()
+
+        
     
     except Exception as e:
         db.session.rollback()
@@ -457,8 +503,11 @@ def apply_to_drive(drive_id):
         }), 500
     
     return jsonify({
-            "message": "Application submitted successfully",
-            "application": application.to_dict_student()
+            "success": True,
+            "message": ("Application reapplied successfully" if existing_application
+                        else "Application submitted successfully"),
+            "application": application.to_dict_student(),
+            "application_id": application.id
         }), 201
     
 
@@ -477,7 +526,7 @@ def get_student_applications():
     
     applications = Application.query.filter_by(student_id=student.id).order_by(Application.applied_at.desc()).all()
 
-    application_list = [application.to_dict_student for application in applications]
+    application_list = [application.to_dict_student() for application in applications]
 
     return jsonify({
         "success": True,
@@ -618,7 +667,7 @@ def get_recruitment_details(application_id):
 
     return jsonify({
         "success": True,
-        "application": application.to_dict(),
+        "application": application.to_dict_student(),
         "placement_drive": {
             "id": drive.id,
             "title": drive.title,
@@ -675,15 +724,51 @@ def download_offer_letter(application_id):
             "message": "Offer letter path not found."
         }), 404
 
-    if not os.path.exists(recruitment.offer_letter_path):
+    print("========== OFFER LETTER DEBUG ==========")
+    print("STORED PATH:", recruitment.offer_letter_path)
+    print("CONFIG FOLDER:", current_app.config["OFFER_LETTER_FOLDER"])
+    print(
+        "NEW PATH:",
+        os.path.join(
+            current_app.config["OFFER_LETTER_FOLDER"],
+            os.path.basename(recruitment.offer_letter_path)
+        )
+    )
+    print(
+        "OLD PATH EXISTS:",
+        os.path.exists(recruitment.offer_letter_path)
+    )
+    print(
+        "NEW PATH EXISTS:",
+        os.path.exists(
+            os.path.join(
+                current_app.config["OFFER_LETTER_FOLDER"],
+                os.path.basename(recruitment.offer_letter_path)
+            )
+        )
+    )
+    print("========================================")
+
+    filename = os.path.basename(
+        recruitment.offer_letter_path
+    )
+
+    offer_letter_path = os.path.join(
+        current_app.config["OFFER_LETTER_FOLDER"],
+        filename
+    )
+
+    if not os.path.isfile(offer_letter_path):
+
         return jsonify({
             "success": False,
             "message": "Offer letter file not found."
         }), 404
 
+
     return send_file(
-        recruitment.offer_letter_path,
+        offer_letter_path,
         as_attachment=True,
-        download_name=os.path.basename(recruitment.offer_letter_path),
+        download_name=filename,
         mimetype="application/pdf"
     )

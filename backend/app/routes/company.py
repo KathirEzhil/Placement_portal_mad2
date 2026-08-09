@@ -921,8 +921,25 @@ def schedule_recruitment_round(application_id):
         }), 400
 
     round_number = data.get("round")
+    
     scheduled_at = data.get("scheduled_at")
+
+    if not scheduled_at:
+        return jsonify({
+            "success": False,
+            "message": "Scheduled date and time are required."
+        }), 400
+
+    try:
+        scheduled_at = datetime.fromisoformat(scheduled_at)
+    except ValueError:
+        return jsonify({
+            "success": False,
+            "message": "Invalid scheduled date and time format."
+        }), 400
+    
     meeting_details = data.get("meeting_details")
+
     test_link = data.get("test_link")
 
     if round_number not in [1, 2, 3, 4]:
@@ -1019,14 +1036,16 @@ def update_round_result(application_id):
         Application.id == application_id,
         PlacementDrive.company_id == company.id).first()
 
-    student = application.student
-    drive = application.drive
-
     if not application:
         return jsonify({
             "success": False,
             "message": "Application not found"
         }), 404
+
+    student = application.student
+    drive = application.drive
+
+    
 
     if application.status != "shortlisted":
         return jsonify({
@@ -1378,5 +1397,69 @@ def view_logo():
 
         as_attachment=False
 
+    )
+
+
+
+@company_bp.route(
+    "/applications/<int:application_id>/resume",
+    methods=["GET"]
+)
+@login_required
+@role_required("company")
+def view_application_resume(application_id):
+
+    application = Application.query.get(application_id)
+
+    if not application:
+
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    drive = PlacementDrive.query.get(application.drive_id)
+
+    if not drive:
+
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found."
+        }), 404
+
+    company = Company.query.filter_by(
+        user_id=session["user_id"]
+    ).first()
+
+    if not company or drive.company_id != company.id:
+
+        return jsonify({
+            "success": False,
+            "message": "You are not authorized to view this resume."
+        }), 403
+
+    if not application.resume_used:
+
+        return jsonify({
+            "success": False,
+            "message": "Resume not found."
+        }), 404
+
+    resume_path = os.path.join(
+        current_app.config["RESUME_UPLOAD_FOLDER"],
+        application.resume_used
+    )
+
+    if not os.path.exists(resume_path):
+
+        return jsonify({
+            "success": False,
+            "message": "Resume file not found."
+        }), 404
+
+    return send_from_directory(
+        current_app.config["RESUME_UPLOAD_FOLDER"],
+        application.resume_used,
+        as_attachment=False
     )
 

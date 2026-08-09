@@ -13,6 +13,10 @@ from app.utils.activity_logger import log_activity
 
 from app.utils.mail import send_email
 
+BACKEND_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+)
+
 recruitment_bp = Blueprint("recruitment",__name__,url_prefix="/company")
 
 @recruitment_bp.route("/applications/<int:application_id>/generate-offer",methods=["PATCH"])
@@ -33,14 +37,15 @@ def generate_offer_letter(application_id):
         PlacementDrive.company_id == company.id
     ).first()
 
-    student = application.student
-
     if not application:
         return jsonify({
             "success": False,
             "message": "Application not found"
         }), 404
 
+    student = application.student
+
+    
     if application.status != "selected":
         return jsonify({
             "success": False,
@@ -202,7 +207,7 @@ def send_offer_letter(application_id):
     )
 
     try:
-
+        print("OFFER EMAIL RECIPIENT:", student.college_email)
         send_email(subject="Placement Portal - Offer Letter",recipients=[student.college_email],
             body=f"""
 Dear {student.full_name},
@@ -288,14 +293,26 @@ def get_company_recruitment_details(application_id):
 
     return jsonify({
         "success": True,
-        "application": application.to_dict(),
-        "student": application.student.to_dict(),
+        "application": application.to_dict_company(),
+        "student": application.to_dict_student(),
         "placement_drive": {
             "id": drive.id,
             "title": drive.title,
             "job_type": drive.job_type,
             "location": drive.location,
-            "compensation": drive.compensation
+            "compensation": drive.compensation,
+
+            "round1_required": drive.round1_required,
+            "round1_name": drive.round1_name,
+
+            "round2_required": drive.round2_required,
+            "round2_name": drive.round2_name,
+
+            "round3_required": drive.round3_required,
+            "round3_name": drive.round3_name,
+
+            "round4_required": drive.round4_required,
+            "round4_name": drive.round4_name
         },
         "recruitment": recruitment.to_dict()
     }), 200
@@ -342,21 +359,22 @@ def download_offer_letter_company(application_id):
             "message": "Offer letter has not been generated yet."
         }), 400
 
-    if not recruitment.offer_letter_path:
-        return jsonify({
-            "success": False,
-            "message": "Offer letter path not found."
-        }), 404
+    offer_path = recruitment.offer_letter_path
 
-    if not os.path.exists(recruitment.offer_letter_path):
+    # First check whether the stored path is already valid
+    if not os.path.isabs(offer_path):
+        offer_path = os.path.abspath(offer_path)
+
+
+    if not os.path.exists(offer_path):
         return jsonify({
             "success": False,
             "message": "Offer letter file not found."
         }), 404
 
     return send_file(
-        recruitment.offer_letter_path,
+        offer_path,
         as_attachment=True,
-        download_name=os.path.basename(recruitment.offer_letter_path),
+        download_name=os.path.basename(offer_path),
         mimetype="application/pdf"
     )

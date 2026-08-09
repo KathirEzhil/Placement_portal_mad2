@@ -12,7 +12,7 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    OFFER_LETTER_FOLDER = "uploads/offer_letters"
+    OFFER_LETTER_FOLDER = os.path.join(BASE_DIR,"uploads","offer_letters")
 
     RESUME_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "resumes")
 

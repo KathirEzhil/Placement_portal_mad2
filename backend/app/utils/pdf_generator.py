@@ -24,7 +24,7 @@ def generate_offer_letter_pdf(application):
         f"OfferLetter.pdf"
     )
 
-    filepath = os.path.join(upload_folder,filename)
+    filepath = os.path.abspath(os.path.join(upload_folder, filename))
 
     document = SimpleDocTemplate(filepath)
 
