@@ -30,9 +30,16 @@ analytics_bp = Blueprint("analytics",__name__,url_prefix="/analytics")
 @role_required("admin")
 def admin_dashboard():
 
+    year = request.args.get(
+        "year",
+        default=datetime.utcnow().year,
+        type=int
+    )
+
     return jsonify({
         "success": True,
-        "summary": get_admin_summary()
+        "year": year,
+        "summary": get_admin_summary(year)
     }), 200
 
 
@@ -41,9 +48,16 @@ def admin_dashboard():
 @role_required("admin")
 def admin_recruitment_funnel():
 
+    year = request.args.get(
+        "year",
+        default=datetime.utcnow().year,
+        type=int
+    )
+
     return jsonify({
         "success": True,
-        "funnel": get_recruitment_funnel()
+        "year": year,
+        "funnel": get_recruitment_funnel(year)
     }), 200
 
 
@@ -70,9 +84,16 @@ def admin_monthly_trends():
 @role_required("admin")
 def admin_company_rankings():
 
+    year = request.args.get(
+        "year",
+        default=datetime.utcnow().year,
+        type=int
+    )
+
     return jsonify({
         "success": True,
-        "company_rankings": get_company_rankings()
+        "year": year,
+        "company_rankings": get_company_rankings(year)
     }), 200
 
 

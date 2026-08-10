@@ -470,15 +470,19 @@ paths:
     get:
       tags: [Analytics]
       summary: Get admin analytics summary
+      parameters:
+        - $ref: '#/components/parameters/Year'
       responses:
-        '200': {description: Admin analytics summary}
+        '200': {description: Year-wise admin analytics summary}
 
   /analytics/admin/recruitment-funnel:
     get:
       tags: [Analytics]
-      summary: Get recruitment funnel
+      summary: Get year-wise recruitment funnel
+      parameters:
+        - $ref: '#/components/parameters/Year'
       responses:
-        '200': {description: Recruitment funnel data}
+        '200': {description: Year-wise recruitment funnel data}
 
   /analytics/admin/monthly-trends:
     get:
@@ -492,9 +496,11 @@ paths:
   /analytics/admin/company-rankings:
     get:
       tags: [Analytics]
-      summary: Get company rankings
+      summary: Get year-wise company rankings
+      parameters:
+        - $ref: '#/components/parameters/Year'
       responses:
-        '200': {description: Company ranking data}
+        '200': {description: Year-wise company ranking data}
 
   /analytics/admin/branch-analytics:
     get:

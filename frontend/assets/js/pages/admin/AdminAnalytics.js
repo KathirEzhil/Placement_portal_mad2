@@ -79,173 +79,173 @@ const AdminAnalytics = {
 
         async loadAnalytics(){
 
-    this.loading = true;
+            this.loading = true;
 
-    try{
+            try{
 
-        const [
+                const [
 
-            summaryResult,
+                    summaryResult,
 
-            funnelResult,
+                    funnelResult,
 
-            monthlyResult,
+                    monthlyResult,
 
-            branchResult,
+                    branchResult,
 
-            packageResult,
+                    packageResult,
 
-            companyResult,
+                    companyResult,
 
-            driveResult,
+                    driveResult,
 
-            activityResult,
+                    activityResult,
 
-            insightResult
+                    insightResult
 
-        ] = await Promise.all([
+                ] = await Promise.all([
 
-            analyticsService.getAdminSummary(),
+                    analyticsService.getAdminSummary(this.selectedYear),
 
-            analyticsService.getRecruitmentFunnel(),
+                    analyticsService.getRecruitmentFunnel(this.selectedYear),
 
-            analyticsService.getMonthlyTrends(
-                this.selectedYear
-            ),
+                    analyticsService.getMonthlyTrends(
+                        this.selectedYear
+                    ),
 
-            analyticsService.getBranchStatistics(
-                this.selectedYear
-            ),
+                    analyticsService.getBranchStatistics(
+                        this.selectedYear
+                    ),
 
-            analyticsService.getPackageStatistics(
-                this.selectedYear
-            ),
+                    analyticsService.getPackageStatistics(
+                        this.selectedYear
+                    ),
 
-            analyticsService.getCompanyRankings(),
+                    analyticsService.getCompanyRankings(this.selectedYear),
 
-            analyticsService.getDrivePerformance(
-                this.selectedYear
-            ),
+                    analyticsService.getDrivePerformance(
+                        this.selectedYear
+                    ),
 
-            analyticsService.getRecentActivities(10),
+                    analyticsService.getRecentActivities(10),
 
-            analyticsService.getInsights(
-                this.selectedYear
-            )
+                    analyticsService.getInsights(
+                        this.selectedYear
+                    )
 
-        ]);
+                ]);
 
 
-        if(summaryResult.success){
+                if(summaryResult.success){
 
-            this.summary =
-                summaryResult.summary || {};
+                    this.summary =
+                        summaryResult.summary || {};
 
-        }
+                }
 
 
-        if(funnelResult.success){
+                if(funnelResult.success){
 
-            this.funnel =
-                funnelResult.funnel || {};
+                    this.funnel =
+                        funnelResult.funnel || {};
 
-        }
+                }
 
 
-        if(monthlyResult.success){
+                if(monthlyResult.success){
 
-            this.monthlyTrends =
-                monthlyResult.monthly_trends || {};
+                    this.monthlyTrends =
+                        monthlyResult.monthly_trends || {};
 
-        }
+                }
 
 
-        if(branchResult.success){
+                if(branchResult.success){
 
-            this.branchStatistics =
-                branchResult.branch_statistics || [];
+                    this.branchStatistics =
+                        branchResult.branch_statistics || [];
 
-        }
+                }
 
 
-        if(packageResult.success){
+                if(packageResult.success){
 
-            this.packageStatistics =
-                packageResult.package_statistics || {};
+                    this.packageStatistics =
+                        packageResult.package_statistics || {};
 
-        }
+                }
 
 
-        if(companyResult.success){
+                if(companyResult.success){
 
-            this.companyRankings =
-                companyResult.company_rankings || [];
+                    this.companyRankings =
+                        companyResult.company_rankings || [];
 
-        }
+                }
 
 
-        if(driveResult.success){
+                if(driveResult.success){
 
-            this.drivePerformance =
-                driveResult.drive_performance || [];
+                    this.drivePerformance =
+                        driveResult.drive_performance || [];
 
-        }
+                }
 
 
-        if(activityResult.success){
+                if(activityResult.success){
 
-            this.recentActivities =
-                activityResult.activities || [];
+                    this.recentActivities =
+                        activityResult.activities || [];
 
-        }
+                }
 
 
-        if(insightResult.success){
+                if(insightResult.success){
 
-            this.insights =
-                insightResult.insights || [];
+                    this.insights =
+                        insightResult.insights || [];
 
-        }
+                }
 
-    }
+            }
 
-    catch(error){
+            catch(error){
 
-        console.error(
-            "Analytics loading error:",
-            error
-        );
+                console.error(
+                    "Analytics loading error:",
+                    error
+                );
 
-    }
+            }
 
-    finally{
+            finally{
 
-        /*
-         * First hide the loading screen.
-         * This causes Vue to render the canvas elements.
-         */
+                /*
+                * First hide the loading screen.
+                * This causes Vue to render the canvas elements.
+                */
 
-        this.loading = false;
+                this.loading = false;
 
 
-        /*
-         * Wait until Vue has actually rendered
-         * the canvas elements.
-         */
+                /*
+                * Wait until Vue has actually rendered
+                * the canvas elements.
+                */
 
-        await this.$nextTick();
+                await this.$nextTick();
 
 
-        /*
-         * Now the canvases exist, so Chart.js
-         * can safely create the charts.
-         */
+                /*
+                * Now the canvases exist, so Chart.js
+                * can safely create the charts.
+                */
 
-        this.createCharts();
+                this.createCharts();
 
-    }
+            }
 
-},
+        },
 
 
         createCharts(){
@@ -555,6 +555,12 @@ const AdminAnalytics = {
                     }
 
                 });
+
+        },
+
+        async changeYear() {
+
+            await this.loadAnalytics();
 
         },
 

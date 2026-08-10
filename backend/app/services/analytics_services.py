@@ -22,36 +22,68 @@ from app.utils.profile_completion import calculate_profile_completion
 
 # ======== Admin analytics ========
 
-def get_admin_summary():
+def get_admin_summary(year):
 
-    cache_key = "admin_summary"
+    cache_key = f"admin_summary:{year}"
 
     cached_data = get_cache(cache_key)
 
     if cached_data is not None:
         return cached_data
 
-    total_students = Student.query.count()
-    approved_companies = Company.query.filter_by(approval_status="approved").count()
-    pending_companies = Company.query.filter_by(approval_status="pending").count()
-    active_drives = PlacementDrive.query.filter_by(status="approved").count()
-    total_applications = Application.query.count()
-    selected_students = Application.query.filter_by(status="selected").count()
-    shortlisted_students = Application.query.filter_by(status="shortlisted").count()
-    rejected_students = Application.query.filter_by(status="rejected").count()
-    withdrawn_students = Application.query.filter_by(status="withdrawn").count()
+    total_students = Student.query.filter(
+        extract("year", Student.created_at) == year
+    ).count()
+
+    approved_companies = Company.query.filter(
+        Company.approval_status == "approved",
+        extract("year", Company.created_at) == year
+    ).count()
+
+    active_drives = PlacementDrive.query.filter(
+        PlacementDrive.status == "approved",
+        extract("year", PlacementDrive.created_at) == year
+    ).count()
+
+    total_applications = Application.query.filter(
+        extract("year", Application.applied_at) == year
+    ).count()
+
+    selected_students = Application.query.filter(
+        Application.status == "selected",
+        extract("year", Application.applied_at) == year
+    ).count()
+
+    shortlisted_students = Application.query.filter(
+        Application.status == "shortlisted",
+        extract("year", Application.applied_at) == year
+    ).count()
+
+    rejected_students = Application.query.filter(
+        Application.status == "rejected",
+        extract("year", Application.applied_at) == year
+    ).count()
+
+    withdrawn_students = Application.query.filter(
+        Application.status == "withdrawn",
+        extract("year", Application.applied_at) == year
+    ).count()
 
     placement_rate = 0
+
     if total_applications > 0:
-        placement_rate = round((selected_students/total_applications)*100,2)
 
-    highest_package = None
-    average_package = None
+        placement_rate = round(
+            (selected_students / total_applications) * 100,
+            2
+        )
 
-    result =  {
+    result = {
         "total_students": total_students,
         "approved_companies": approved_companies,
-        "pending_companies": pending_companies,
+        "pending_companies": Company.query.filter_by(
+            approval_status="pending"
+        ).count(),
         "active_drives": active_drives,
         "total_applications": total_applications,
         "selected_students": selected_students,
@@ -59,40 +91,83 @@ def get_admin_summary():
         "rejected_students": rejected_students,
         "withdrawn_students": withdrawn_students,
         "placement_rate": placement_rate,
-        "highest_package": highest_package,
-        "average_package": average_package
+        "highest_package": None,
+        "average_package": None
     }
 
     set_cache(
         cache_key,
         result,
         timeout=300
-        )
+    )
 
     return result
 
+def get_recruitment_funnel(year):
 
-def get_recruitment_funnel():
-
-    cache_key = "admin_recruitment_funnel"
+    cache_key = f"admin_recruitment_funnel:{year}"
 
     cached_data = get_cache(cache_key)
 
     if cached_data is not None:
         return cached_data
 
-    applications = Application.query.count()
-    shortlisted = Application.query.filter_by(status="shortlisted").count()
+    applications = Application.query.filter(
+        extract("year", Application.applied_at) == year
+    ).count()
 
-    recruitment_started = RecruitmentProcess.query.filter(
-        RecruitmentProcess.recruitment_status.in_(
-            ["in_progress", "completed"])).count()
+    shortlisted = Application.query.filter(
+        Application.status == "shortlisted",
+        extract("year", Application.applied_at) == year
+    ).count()
 
-    selected = Application.query.filter_by(status="selected").count()
-    offer_generated = RecruitmentProcess.query.filter_by(offer_letter_generated=True).count()
-    offer_sent = RecruitmentProcess.query.filter_by(offer_letter_sent=True).count()
+    recruitment_started = (
+        RecruitmentProcess.query
+        .join(
+            Application,
+            RecruitmentProcess.application_id == Application.id
+        )
+        .filter(
+            RecruitmentProcess.recruitment_status.in_(
+                ["in_progress", "completed"]
+            ),
+            extract("year", Application.applied_at) == year
+        )
+        .count()
+    )
 
-    result =  {
+    selected = Application.query.filter(
+        Application.status == "selected",
+        extract("year", Application.applied_at) == year
+    ).count()
+
+    offer_generated = (
+        RecruitmentProcess.query
+        .join(
+            Application,
+            RecruitmentProcess.application_id == Application.id
+        )
+        .filter(
+            RecruitmentProcess.offer_letter_generated == True,
+            extract("year", Application.applied_at) == year
+        )
+        .count()
+    )
+
+    offer_sent = (
+        RecruitmentProcess.query
+        .join(
+            Application,
+            RecruitmentProcess.application_id == Application.id
+        )
+        .filter(
+            RecruitmentProcess.offer_letter_sent == True,
+            extract("year", Application.applied_at) == year
+        )
+        .count()
+    )
+
+    result = {
         "applications": applications,
         "shortlisted": shortlisted,
         "recruitment_started": recruitment_started,
@@ -210,9 +285,9 @@ def get_monthly_trends(year):
     return months
 
 
-def get_company_rankings():
+def get_company_rankings(year):
 
-    cache_key = "admin_company_rankings"
+    cache_key = f"admin_company_rankings:{year}"
 
     cached_data = get_cache(cache_key)
 
@@ -221,23 +296,44 @@ def get_company_rankings():
 
     company_data = (
         db.session.query(
-            Company.id,Company.company_name,
-            func.count(func.distinct(PlacementDrive.id)).label("total_drives"),
-            func.count(func.distinct(Application.id)).label("total_applications"),
+            Company.id,
+            Company.company_name,
+
+            func.count(
+                func.distinct(PlacementDrive.id)
+            ).label("total_drives"),
+
+            func.count(
+                func.distinct(Application.id)
+            ).label("total_applications"),
+
             func.sum(
-                db.case((Application.status == "selected", 1),else_=0)
+                db.case(
+                    (Application.status == "selected", 1),
+                    else_=0
+                )
             ).label("selected_students")
         )
+
         .outerjoin(
             PlacementDrive,
             PlacementDrive.company_id == Company.id
         )
+
         .outerjoin(
             Application,
             Application.drive_id == PlacementDrive.id
         )
-        .filter(Company.approval_status == "approved")
-        .group_by(Company.id)
+
+        .filter(
+            extract("year", PlacementDrive.created_at) == year
+        )
+
+        .group_by(
+            Company.id,
+            Company.company_name
+        )
+
         .all()
     )
 
@@ -245,25 +341,35 @@ def get_company_rankings():
 
     for company in company_data:
 
-        selected = company.selected_students or 0
-        applications = company.total_applications or 0
+        total_applications = company.total_applications or 0
+        selected_students = company.selected_students or 0
+
         success_rate = 0
-        if applications > 0:
-            success_rate = round((selected / applications) * 100,2)
+
+        if total_applications > 0:
+
+            success_rate = round(
+                (selected_students / total_applications) * 100,
+                2
+            )
 
         rankings.append({
             "company_id": company.id,
             "company_name": company.company_name,
-            "total_drives": company.total_drives,
-            "total_applications": applications,
-            "selected_students": selected,
+            "total_drives": company.total_drives or 0,
+            "total_applications": total_applications,
+            "selected_students": selected_students,
             "success_rate": success_rate
         })
 
-    rankings.sort(key=lambda company: company["selected_students"],reverse=True)
+    rankings.sort(
+        key=lambda company: company["selected_students"],
+        reverse=True
+    )
 
-    for index, company in enumerate(rankings):
-            company["rank"] = index + 1
+    for index, company in enumerate(rankings, start=1):
+
+        company["rank"] = index
 
     set_cache(
         cache_key,
@@ -565,7 +671,7 @@ def get_admin_insights(year):
 
     insights = []
 
-    company_rankings = get_company_rankings()
+    company_rankings = get_company_rankings(year)
     if company_rankings:
         top_company = company_rankings[0]
         insights.append({
@@ -638,7 +744,7 @@ def get_admin_insights(year):
             )
         })
 
-    summary = get_admin_summary()
+    summary = get_admin_summary(year)
     insights.append({
         "type": "success",
         "icon": "analytics",

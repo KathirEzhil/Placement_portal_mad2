@@ -1,9 +1,9 @@
 const analyticsService = {
 
-    async getAdminSummary(){
+    async getAdminSummary(year){
 
         const response = await fetch(
-            "/analytics/admin/dashboard",
+            "/analytics/admin/dashboard?year=${year}",
             {
                 method:"GET",
                 credentials:"include"
@@ -15,10 +15,10 @@ const analyticsService = {
     },
 
 
-    async getRecruitmentFunnel(){
+    async getRecruitmentFunnel(year){
 
         const response = await fetch(
-            "/analytics/admin/recruitment-funnel",
+             `/analytics/admin/recruitment-funnel?year=${year}`,
             {
                 method:"GET",
                 credentials:"include"
@@ -45,10 +45,10 @@ const analyticsService = {
     },
 
 
-    async getCompanyRankings(){
+    async getCompanyRankings(year){
 
         const response = await fetch(
-            "/analytics/admin/company-rankings",
+            `/analytics/admin/company-rankings?year=${year}`,
             {
                 method:"GET",
                 credentials:"include"
