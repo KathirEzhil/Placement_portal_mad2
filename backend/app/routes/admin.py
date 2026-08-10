@@ -12,7 +12,7 @@ from app.models import User
 from app.extensions import db
 from app.utils.decorators import login_required, role_required
 
-from app.utils.cache import delete_cache, clear_admin_cache
+from app.utils.cache import delete_cache, clear_admin_cache, get_cache, set_cache, clear_admin_management_cache
 
 
 admin_bp = Blueprint("admin",__name__,url_prefix="/admin")
@@ -112,6 +112,7 @@ def approve_company(company_id):
     try:
         db.session.commit()
         clear_admin_cache()
+        clear_admin_management_cache()
 
     except Exception as e:
 
@@ -171,6 +172,7 @@ def reject_company(company_id):
     try:
         db.session.commit()
         clear_admin_cache()
+        clear_admin_management_cache()
 
     except Exception as e:
 
@@ -274,6 +276,8 @@ def approve_drive(drive_id):
 
         clear_admin_cache()
 
+        clear_admin_management_cache()
+
         return jsonify({
             "success": True,
             "message": "Placement drive approved successfully"
@@ -348,6 +352,8 @@ def reject_drive(drive_id):
        
         clear_admin_cache()
 
+        clear_admin_management_cache()
+
         return jsonify({
             "success": True,
             "message": "Placement drive rejected successfully"
@@ -370,6 +376,19 @@ def reject_drive(drive_id):
 @login_required
 @role_required("admin")
 def get_students():
+
+    cache_key = "admin_students"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+
+        return jsonify({
+            "success": True,
+            "count": len(cached_data),
+            "students": cached_data,
+            "cached": True
+        }), 200
 
     students = Student.query.order_by(
         Student.created_at.desc()
@@ -445,14 +464,17 @@ def get_students():
 
         })
 
+    set_cache(
+        cache_key,
+        student_data,
+        timeout=300
+    )
+
     return jsonify({
-
         "success": True,
-
         "count": len(student_data),
-
-        "students": student_data
-
+        "students": student_data,
+        "cached": False
     }), 200
 
 
@@ -764,6 +786,19 @@ def run_monthly_report():
 @role_required("admin")
 def get_recruitment_processes():
 
+    cache_key = "admin_recruitment"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+
+        return jsonify({
+            "success": True,
+            "count": len(cached_data),
+            "recruitment": cached_data,
+            "cached": True
+        }), 200
+
     recruitment_processes = (
         RecruitmentProcess.query
         .join(Application)
@@ -963,13 +998,21 @@ def get_recruitment_processes():
 
         })
 
+
+    set_cache(
+        cache_key,
+        recruitment_data,
+        timeout=300
+    )
+
     return jsonify({
 
         "success": True,
 
         "count": len(recruitment_data),
 
-        "recruitment": recruitment_data
+        "recruitment": recruitment_data,
+        "cached": False
 
     }), 200
 
@@ -1086,6 +1129,7 @@ def update_student_status(student_id):
 
         db.session.commit()
         clear_admin_cache()
+        clear_admin_management_cache()
 
     except Exception as e:
 

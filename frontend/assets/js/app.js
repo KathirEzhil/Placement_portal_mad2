@@ -93,12 +93,14 @@ const app = Vue.createApp({
 
             console.log(result);
             if (result.success){
+
                 this.isLoggedIn = true;
+
                 this.currentUser = result.data;
-                this.navigateToDashboard(result.data.role);
+
+                await this.checkProfileAndNavigate(result.data.role);
 
                 this.loginMessage = result.message;
-
             }
             else{
                 this.loginMessage = result.message;
@@ -170,35 +172,55 @@ const app = Vue.createApp({
             const result = await response.json();
 
             if(result.authenticated){
+
                 this.isLoggedIn = true;
+
                 this.currentUser = result.user;
-                this.navigateToDashboard(result.user.role);
+
+                await this.checkProfileAndNavigate(
+                    result.user.role
+                );
             }
 
             console.log(result);
         },
 
-        navigateToDashboard(role){
+        // navigateToDashboard(role){
 
-            // if(role === "student"){
-            //     this.currentPage = "student-dashboard";
-            // }
-            // else if(role === "company"){
-            //     this.currentPage = "company-dashboard";
-            // }
-            // else if(role === "admin"){
-            //     this.currentPage = "admin-dashboard";
-            // }
-            this.currentPage = "dashboard";
-        },
+        //     // if(role === "student"){
+        //     //     this.currentPage = "student-dashboard";
+        //     // }
+        //     // else if(role === "company"){
+        //     //     this.currentPage = "company-dashboard";
+        //     // }
+        //     // else if(role === "admin"){
+        //     //     this.currentPage = "admin-dashboard";
+        //     // }
+        //     this.currentPage = "dashboard";
+        // },
 
-        navigate(page) {
-
+        async navigate(page) {
 
             if (page === "create-drive") {
 
                 this.editingDriveId = null;
 
+            }
+
+            if (
+                page === "dashboard" &&
+                this.currentUser &&
+                (
+                    this.currentUser.role === "student" ||
+                    this.currentUser.role === "company"
+                )
+            ) {
+
+                await this.checkProfileAndNavigate(
+                    this.currentUser.role
+                );
+
+                return;
             }
 
             this.currentPage = page;
@@ -211,8 +233,60 @@ const app = Vue.createApp({
 
             this.currentPage = "create-drive";
 
-        }
+        },
+    
+
+        async checkProfileAndNavigate(role){
+
+            try{
+
+                let endpoint = "";
+
+                if(role === "student"){
+                    endpoint = "/student/profile";
+                }
+
+                else if(role === "company"){
+                    endpoint = "/company/profile";
+                }
+
+                else{
+                    this.currentPage = "dashboard";
+                    return;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: "GET",
+                    credentials: "include"
+                });
+
+                const result = await response.json();
+
+                if(result.profile_exists === false){
+
+                    this.currentPage = "profile";
+
+                    return;
+                }
+
+                this.currentPage = "dashboard";
+
+            }
+
+            catch(error){
+
+                console.error(
+                    "Profile check failed:",
+                    error
+                );
+
+                this.currentPage = "profile";
+            }
+
+        },
     },
+
+    
 
 
     template: `
@@ -236,7 +310,8 @@ const app = Vue.createApp({
             v-else-if="currentPage === 'login'"
             :login-form="loginForm"
             :login-message="loginMessage"
-            @login="login">
+            @login="login"
+             @navigate="currentPage = $event">
         </login-page>
         
         <register-page

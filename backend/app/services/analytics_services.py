@@ -2,7 +2,7 @@ from sqlalchemy import func
 from sqlalchemy import extract
 from statistics import median
 
-from app.utils.cache import get_cache, set_cache
+from app.utils.cache import get_cache, set_cache, delete_cache, clear_admin_cache
 
 from datetime import date
 
@@ -153,7 +153,7 @@ def get_monthly_trends(year):
             extract("month", PlacementDrive.created_at),
             func.count(PlacementDrive.id)
         )
-        .filter(extract("year", Application.applied_at) == year)
+        .filter(extract("year", PlacementDrive.created_at) == year)
         .group_by(extract("month", PlacementDrive.created_at))
         .all()
     )
@@ -166,7 +166,7 @@ def get_monthly_trends(year):
             extract("month", Company.created_at),
             func.count(Company.id)
         )
-        .filter(extract("year", Application.applied_at) == year)
+        .filter(extract("year", Company.created_at) == year)
         .group_by(extract("month", Company.created_at))
         .all()
     )
@@ -179,7 +179,7 @@ def get_monthly_trends(year):
             extract("month", Student.created_at),
             func.count(Student.id)
         )
-        .filter(extract("year", Application.applied_at) == year)
+        .filter(extract("year", Student.created_at) == year)
         .group_by(extract("month", Student.created_at))
         .all()
     )
@@ -192,7 +192,7 @@ def get_monthly_trends(year):
             extract("month", Application.updated_at),
             func.count(Application.id)
         )
-        .filter(extract("year", Application.applied_at) == year)
+        .filter(extract("year", Application.updated_at) == year)
         .filter(Application.status == "selected")
         .group_by(extract("month", Application.updated_at))
         .all()
@@ -349,7 +349,7 @@ def get_branch_statistics(year):
 
 def get_package_statistics(year):
 
-    cache_key = f"admin_branch_statistics:{year}"
+    cache_key = f"admin_package_statistics:{year}"
 
     cached_data = get_cache(cache_key)
 

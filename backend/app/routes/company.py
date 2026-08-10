@@ -17,7 +17,7 @@ from app.models.recruitment_process import RecruitmentProcess
 from app.utils.decorators import login_required, role_required
 from app.utils.activity_logger import log_activity
 
-from app.utils.cache import delete_cache, clear_admin_cache
+from app.utils.cache import delete_cache, clear_admin_cache, clear_admin_management_cache
 
 company_bp = Blueprint("company",__name__,url_prefix="/company")
 
@@ -453,6 +453,8 @@ def create_drive():
 
         delete_cache("student_approved_drives")
 
+        clear_admin_management_cache()
+
         log_activity(
             user_id=session["user_id"],
             role="company",
@@ -737,6 +739,7 @@ def update_drive(drive_id):
     try:
         db.session.commit()
         delete_cache("student_approved_drives")
+        clear_admin_management_cache()
 
         log_activity(
         user_id=session["user_id"],
@@ -749,6 +752,7 @@ def update_drive(drive_id):
 
     except Exception as e:
         db.session.rollback()
+
 
         return jsonify({
             "success": False,
@@ -906,6 +910,7 @@ def update_application_status(application_id):
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,
@@ -1056,6 +1061,7 @@ def schedule_recruitment_round(application_id):
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,
@@ -1247,6 +1253,7 @@ def update_round_result(application_id):
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,

@@ -30,7 +30,7 @@ def set_cache(key, data, timeout=300):
 def delete_cache(key):
 
     redis_client.delete(key)
-    
+
 
 def clear_admin_cache():
 
@@ -38,3 +38,9 @@ def clear_admin_cache():
 
     if keys:
         redis_client.delete(*keys)
+
+
+def clear_admin_management_cache():
+
+    delete_cache("admin_recruitment")
+    delete_cache("admin_students")

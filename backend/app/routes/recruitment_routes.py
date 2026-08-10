@@ -13,7 +13,7 @@ from app.utils.activity_logger import log_activity
 
 from app.utils.mail import send_email
 
-from app.utils.cache import delete_cache, clear_admin_cache
+from app.utils.cache import delete_cache, clear_admin_cache, clear_admin_management_cache
 
 BACKEND_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
@@ -97,6 +97,7 @@ def generate_offer_letter(application_id):
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,
@@ -313,6 +314,7 @@ Regards,
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,
@@ -440,6 +442,7 @@ Regards,
             f"company_dashboard:{company.id}"
         )
         clear_admin_cache()
+        clear_admin_management_cache()
 
         return jsonify({
             "success": True,

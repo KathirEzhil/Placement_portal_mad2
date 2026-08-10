@@ -4,6 +4,13 @@ const LoginPage = {
 
     emits: ["login","navigate"],
 
+    data() {
+        return {
+            showPassword: false
+        }
+
+    },
+
     template:
     `
         <div class="container py-5">
@@ -11,7 +18,18 @@ const LoginPage = {
                 <div class="col-lg-5">
                     <div class="card shadow">
                         <div class="card-body p-4">
+                        
+                        <button
+                                type="button"
+                                class="btn btn-outline-secondary mb-3"
+                                @click="$emit('navigate','landing')">
+
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Home
+
+                            </button>
                             <h2 class="text-center mb-4">Login</h2>
+                            
                             <div class="mb-3">
                                 <label class="form-label">Email</label>
 
@@ -24,11 +42,28 @@ const LoginPage = {
                             <div class="mb-4">
                                 <label class="form-label">Password</label>
 
-                                <input 
-                                    type="password" 
-                                    class="form-control"
-                                    v-model="loginForm.password"
-                                    placeholder="Enter your password">
+                                <div class="input-group">
+
+                                    <input
+                                        :type="showPassword ? 'text' : 'password'"
+                                        class="form-control"
+                                        placeholder="Enter your password"
+                                        v-model="loginForm.password">
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary"
+                                        @click="showPassword = !showPassword">
+
+                                        <i
+                                            :class="showPassword
+                                                ? 'bi bi-eye-slash'
+                                                : 'bi bi-eye'">
+                                        </i>
+
+                                    </button>
+
+                                </div>
                             </div>
 
                             <button class="btn btn-primary w-100" @click="$emit('login')">Login</button>
@@ -37,8 +72,6 @@ const LoginPage = {
 
                             <hr>
 
-                            <p>Email: {{ loginForm.email }}</p>
-                            <p>Password: {{ loginForm.password }}</p>
                         </div>
                     </div>
                 </div>

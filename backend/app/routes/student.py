@@ -15,7 +15,7 @@ from app.models.recruitment_process import RecruitmentProcess
 
 from app.utils.decorators import login_required, role_required
 from app.utils.activity_logger import log_activity
-from app.utils.cache import get_cache, delete_cache, set_cache
+from app.utils.cache import get_cache, delete_cache, set_cache, clear_admin_management_cache
 
 
 ALLOWED_EXTENSIONS = {"pdf","docx","doc"}
@@ -585,6 +585,7 @@ def apply_to_drive(drive_id):
             db.session.add(recruitmentprocess)
 
         db.session.commit()
+        clear_admin_management_cache()
 
         
     
@@ -713,6 +714,7 @@ def withdraw_application(application_id):
         application.last_status_updated_by = "student"
 
         db.session.commit()
+        clear_admin_management_cache()
     
     except Exception as e:
         db.session.rollback()
