@@ -17,7 +17,42 @@ from app.models.recruitment_process import RecruitmentProcess
 from app.utils.decorators import login_required, role_required
 from app.utils.activity_logger import log_activity
 
+from app.utils.cache import delete_cache, clear_admin_cache
+
 company_bp = Blueprint("company",__name__,url_prefix="/company")
+
+@company_bp.before_request
+def check_company_account_status():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message": "User account not found"
+        }), 404
+
+    if not user.is_active:
+
+        if request.path == "/analytics/company/dashboard":
+            return None
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Your company account has been "
+                "deactivated by the administrator."
+            ),
+            "account_active": False
+        }), 403
+
+    return None
+
 
 VALID_APPLICATION_STATUSES = {"shortlisted","rejected"}
 
@@ -411,6 +446,13 @@ def create_drive():
         db.session.add(new_drive)
         db.session.commit()
 
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
+
+        delete_cache("student_approved_drives")
+
         log_activity(
             user_id=session["user_id"],
             role="company",
@@ -694,6 +736,8 @@ def update_drive(drive_id):
 
     try:
         db.session.commit()
+        delete_cache("student_approved_drives")
+
         log_activity(
         user_id=session["user_id"],
         role="company",
@@ -858,6 +902,11 @@ def update_application_status(application_id):
     try:
         db.session.commit()
 
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
+
         return jsonify({
             "success": True,
             "message": f"Application status updated to {status} successfully.",
@@ -1002,6 +1051,11 @@ def schedule_recruitment_round(application_id):
 
     try:
         db.session.commit()
+
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
 
         return jsonify({
             "success": True,
@@ -1188,6 +1242,11 @@ def update_round_result(application_id):
 
     try:
         db.session.commit()
+
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
 
         return jsonify({
             "success": True,

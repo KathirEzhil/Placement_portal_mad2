@@ -12,6 +12,8 @@ from app.models import User
 from app.extensions import db
 from app.utils.decorators import login_required, role_required
 
+from app.utils.cache import delete_cache, clear_admin_cache
+
 
 admin_bp = Blueprint("admin",__name__,url_prefix="/admin")
 
@@ -88,7 +90,7 @@ def get_company(company_id):
 @admin_bp.route("/company/<int:company_id>/approve",methods=["PUT"])
 @login_required
 @role_required("admin")
-def appprove_company(company_id):
+def approve_company(company_id):
 
     company = db.session.get(Company,company_id)
 
@@ -109,6 +111,7 @@ def appprove_company(company_id):
 
     try:
         db.session.commit()
+        clear_admin_cache()
 
     except Exception as e:
 
@@ -167,6 +170,7 @@ def reject_company(company_id):
 
     try:
         db.session.commit()
+        clear_admin_cache()
 
     except Exception as e:
 
@@ -263,6 +267,13 @@ def approve_drive(drive_id):
 
         db.session.commit()
 
+        delete_cache(
+            f"company_dashboard:{drive.company_id}"
+        )
+        delete_cache("student_approved_drives")
+
+        clear_admin_cache()
+
         return jsonify({
             "success": True,
             "message": "Placement drive approved successfully"
@@ -329,7 +340,13 @@ def reject_drive(drive_id):
         drive.status = "rejected"
         drive.rejection_reason = reason
 
-        db.session.commmit()
+        db.session.commit()
+
+        delete_cache(
+            f"company_dashboard:{drive.company_id}"
+        )
+       
+        clear_admin_cache()
 
         return jsonify({
             "success": True,
@@ -1068,6 +1085,7 @@ def update_student_status(student_id):
     try:
 
         db.session.commit()
+        clear_admin_cache()
 
     except Exception as e:
 
@@ -1150,6 +1168,7 @@ def update_company_status(company_id):
     try:
 
         db.session.commit()
+        clear_admin_cache()
 
     except Exception as e:
 

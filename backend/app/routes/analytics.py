@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.models.company import Company
 from app.models.student import Student
+from app.models.user import User
 
 from app.utils.decorators import login_required, role_required
 from app.services.analytics_services import get_admin_summary
@@ -138,7 +139,7 @@ def admin_recent_activities():
 
     return jsonify({
         "success": True,
-        "activities": get_recent_activities()
+        "activities": get_recent_activities(limit)
     }),200
 
 
@@ -173,6 +174,7 @@ def company_dashboard():
 
     return jsonify({
         "success": True,
+        "account_active": company.user.is_active,
         "dashboard": get_company_dashboard(company.id)
     }), 200
 
@@ -194,8 +196,9 @@ def student_dashboard():
 
     return jsonify({
         "success": True,
+        "account_active": student.user.is_active,
         "dashboard": get_student_dashboard(student.id)
-    }),200
+    }), 200
 
 
 @analytics_bp.route("/student/analytics", methods=["GET"])
@@ -220,3 +223,37 @@ def student_analytics():
         "analytics": get_student_analytics(student.id)
 
     }),200
+
+
+@analytics_bp.before_request
+def check_company_analytics_status():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message": "User account not found"
+        }), 404
+
+    if (
+        user.role == "company"
+        and not user.is_active
+        and request.path != "/analytics/company/dashboard"
+    ):
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Your company account has been "
+                "deactivated by the administrator."
+            ),
+            "account_active": False
+        }), 403
+
+    return None

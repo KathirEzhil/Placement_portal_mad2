@@ -13,7 +13,10 @@ const StudentDashboard = {
 
             loading: true,
 
-            error: null
+            error: null,
+
+            accountDeactivated: false
+
 
         };
 
@@ -26,8 +29,7 @@ const StudentDashboard = {
 
             if (
                 this.dashboard &&
-                this.dashboard.profile &&
-                this.dashboard.profile.profile_completion === 100
+                this.dashboard.profile 
             ) {
 
                 return this.dashboard.profile.name;
@@ -227,6 +229,16 @@ const StudentDashboard = {
 
                 }
 
+                if (result.account_active === false) {
+
+                    this.accountDeactivated = true;
+
+                    this.loading = false;
+
+                    return;
+
+                }
+
 
                 this.dashboard =
                     result.dashboard;
@@ -315,9 +327,72 @@ const StudentDashboard = {
         </div>
 
 
-        <!-- Dashboard -->
+        <!-- Deactivated Account -->
 
-        <div v-else>
+<div
+    v-else-if="accountDeactivated"
+    class="card border-0 shadow-sm rounded-4">
+
+    <div class="card-body text-center py-5">
+
+        <div
+            class="rounded-circle bg-danger bg-opacity-10
+                   d-inline-flex align-items-center
+                   justify-content-center mb-4"
+            style="width:90px;height:90px;">
+
+            <i
+                class="bi bi-person-slash text-danger"
+                style="font-size:2.5rem;">
+            </i>
+
+        </div>
+
+
+        <h3 class="fw-bold mb-2">
+
+            Account Deactivated
+
+        </h3>
+
+
+        <p class="text-muted mb-2">
+
+            Your student account has been
+            deactivated by the administrator.
+
+        </p>
+
+
+        <p class="text-muted small mb-4">
+
+            You can access your account, but placement
+            portal functions are currently unavailable.
+
+            Please contact the administrator for
+            further assistance.
+
+        </p>
+
+
+        <button
+            class="btn btn-outline-danger"
+            @click="$root.logout">
+
+            <i class="bi bi-box-arrow-right me-2"></i>
+
+            Logout
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- Dashboard -->
+
+<div v-else>
 
 
             <!-- Hero -->

@@ -30,6 +30,20 @@ const StudentManagement = {
 
             showApplications: false,
 
+            activeTab: "students",
+
+            companies: [],
+
+            filteredCompanies: [],
+
+            companySearchQuery: "",
+
+            selectedCompany: null,
+
+            showCompanyDetails: false,
+
+            loadingCompanies: false
+
             // studentService: window.studentService
 
         };
@@ -79,6 +93,8 @@ const StudentManagement = {
     async mounted() {
 
         await this.loadStudents();
+
+        await this.loadCompanies();
 
     },
 
@@ -394,7 +410,225 @@ const StudentManagement = {
 
             return `/admin/student/${studentId}/resume`;
 
-        }
+        },
+
+        async loadCompanies() {
+
+            this.loadingCompanies = true;
+
+            try {
+
+                const result =
+                    await adminService.getAllCompanies();
+
+                if (result.success) {
+
+                    this.companies =
+                        result.companies || [];
+
+                    this.filterCompanies();
+
+                }
+
+                else {
+
+                    alert(
+                        result.message ||
+                        "Failed to load companies."
+                    );
+
+                }
+
+            }
+
+            catch(error) {
+
+                console.error(
+                    "Company loading error:",
+                    error
+                );
+
+            }
+
+            finally {
+
+                this.loadingCompanies = false;
+
+            }
+
+        },
+
+        filterCompanies() {
+
+            const search =
+                this.companySearchQuery
+                    .trim()
+                    .toLowerCase();
+
+            this.filteredCompanies =
+                this.companies.filter(company => {
+
+                    if (!search) {
+                        return true;
+                    }
+
+                    return (
+
+                        (company.company_name || "")
+                            .toLowerCase()
+                            .includes(search)
+
+                        ||
+
+                        (company.industry_type || "")
+                            .toLowerCase()
+                            .includes(search)
+
+                        ||
+
+                        (company.location || "")
+                            .toLowerCase()
+                            .includes(search)
+
+                        ||
+
+                        (company.hr_email || "")
+                            .toLowerCase()
+                            .includes(search)
+
+                    );
+
+                });
+
+        },
+
+        async toggleStudentStatus(student) {
+
+            const action =
+                student.is_active
+                    ? "deactivate"
+                    : "activate";
+
+            const confirmed = confirm(
+                `Are you sure you want to ${action} ${student.full_name}?`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+
+                const result =
+                    await studentService.updateStudentStatus(
+                        student.id,
+                        !student.is_active
+                    );
+
+                if (result.success) {
+
+                    student.is_active =
+                        result.is_active;
+
+                }
+
+                else {
+
+                    alert(
+                        result.message ||
+                        "Unable to update student status."
+                    );
+
+                }
+
+            }
+
+            catch(error) {
+
+                console.error(
+                    "Student status error:",
+                    error
+                );
+
+                alert(
+                    "Unable to update student status."
+                );
+
+            }
+
+        },
+
+        async toggleCompanyStatus(company) {
+
+            const action =
+                company.is_active
+                    ? "deactivate"
+                    : "activate";
+
+            const confirmed = confirm(
+                `Are you sure you want to ${action} ${company.company_name}?`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+
+                const result =
+                    await adminService.updateCompanyStatus(
+                        company.id,
+                        !company.is_active
+                    );
+
+                if (result.success) {
+
+                    company.is_active =
+                        result.is_active;
+
+                }
+
+                else {
+
+                    alert(
+                        result.message ||
+                        "Unable to update company status."
+                    );
+
+                }
+
+            }
+
+            catch(error) {
+
+                console.error(
+                    "Company status error:",
+                    error
+                );
+
+                alert(
+                    "Unable to update company status."
+                );
+
+            }
+
+        },
+
+        accountStatusClass(isActive) {
+
+            return isActive
+                ? "bg-success"
+                : "bg-danger";
+
+        },
+
+        accountStatusText(isActive) {
+
+            return isActive
+                ? "Active"
+                : "Deactivated";
+
+        },
 
     },
 
@@ -417,33 +651,92 @@ const StudentManagement = {
 
                     <i class="bi bi-people-fill me-2"></i>
 
-                    Student Management
+                    User Management
 
                 </h2>
 
                 <p class="text-muted mb-0">
 
-                    View and manage registered students
+                    Search and manage students and companies
 
                 </p>
 
             </div>
 
 
-            <span class="badge
-                         bg-primary
-                         rounded-pill
-                         px-3
-                         py-2">
+            <span
+                v-if="activeTab === 'students'"
+                class="badge bg-primary rounded-pill px-3 py-2">
 
-                {{filteredStudents.length}} Students
+                {{ filteredStudents.length }} Students
+
+            </span>
+
+            <span
+                v-else
+                class="badge bg-primary rounded-pill px-3 py-2">
+
+                {{ filteredCompanies.length }} Companies
 
             </span>
 
         </div>
 
+        <!-- USER TYPE TABS -->
+
+            <div class="d-flex gap-2 mb-4">
+
+                <button
+                    class="btn"
+                    :class="
+                        activeTab === 'students'
+                            ? 'btn-primary'
+                            : 'btn-outline-primary'
+                    "
+                    @click="activeTab = 'students'">
+
+                    <i class="bi bi-mortarboard me-2"></i>
+
+                    Students
+
+                    <span class="badge bg-light text-dark ms-2">
+
+                        {{ students.length }}
+
+                    </span>
+
+                </button>
+
+
+                <button
+                    class="btn"
+                    :class="
+                        activeTab === 'companies'
+                            ? 'btn-primary'
+                            : 'btn-outline-primary'
+                    "
+                    @click="activeTab = 'companies'">
+
+                    <i class="bi bi-building me-2"></i>
+
+                    Companies
+
+                    <span class="badge bg-light text-dark ms-2">
+
+                        {{ companies.length }}
+
+                    </span>
+
+                </button>
+
+            </div>
+
 
         <!-- Filters -->
+
+        <!-- student section -->
+
+        <div v-if="activeTab === 'students'">
 
         <div class="card
                     border-0
@@ -578,6 +871,10 @@ const StudentManagement = {
 
         </div>
 
+    
+
+
+
 
         <!-- Loading -->
 
@@ -672,7 +969,11 @@ const StudentManagement = {
 
                                 <th>Applications</th>
 
-                                <th>Status</th>
+                                <th>Placement</th>
+
+                                <th>Account</th>
+
+                                
 
                                 <th class="text-end">
 
@@ -761,6 +1062,26 @@ const StudentManagement = {
 
                                 </td>
 
+                                <td>
+
+                                    <span
+                                        class="badge"
+                                        :class="
+                                            accountStatusClass(
+                                                student.is_active
+                                            )
+                                        ">
+
+                                        {{
+                                            accountStatusText(
+                                                student.is_active
+                                            )
+                                        }}
+
+                                    </span>
+
+                                </td>
+
 
                                 <td class="text-end">
 
@@ -801,6 +1122,33 @@ const StudentManagement = {
 
                                             <i
                                                 class="bi bi-file-earmark-text">
+
+                                            </i>
+
+                                        </button>
+
+                                        <button
+                                            class="btn btn-sm"
+                                            :class="
+                                                student.is_active
+                                                    ? 'btn-outline-danger'
+                                                    : 'btn-outline-success'
+                                            "
+                                            :title="
+                                                student.is_active
+                                                    ? 'Deactivate Student'
+                                                    : 'Activate Student'
+                                            "
+                                            @click="
+                                                toggleStudentStatus(student)
+                                            ">
+
+                                            <i
+                                                :class="
+                                                    student.is_active
+                                                        ? 'bi bi-person-slash'
+                                                        : 'bi bi-person-check'
+                                                ">
 
                                             </i>
 
@@ -883,6 +1231,292 @@ const StudentManagement = {
             </div>
 
         </div>
+
+        </div>
+
+        <!-- COMPANY SECTION -->
+
+        <div
+            v-if="activeTab === 'companies'">
+
+            
+
+
+            <!-- COMPANY SEARCH -->
+
+            <div
+                class="card border-0 shadow-sm
+                    rounded-4 mb-4">
+
+                <div class="card-body">
+
+                    <label
+                        class="form-label fw-semibold">
+
+                        Search Companies
+
+                    </label>
+
+                    <div class="input-group">
+
+                        <span class="input-group-text">
+
+                            <i class="bi bi-search"></i>
+
+                        </span>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Company name, industry,location or HR email"
+                            v-model="companySearchQuery"
+                            @input="filterCompanies">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- COMPANY LOADING -->
+
+            <div
+                v-if="loadingCompanies"
+                class="text-center py-5">
+
+                <div
+                    class="spinner-border text-primary">
+                </div>
+
+                <p class="text-muted mt-3">
+
+                    Loading companies...
+
+                </p>
+
+            </div>
+
+
+            <!-- COMPANY EMPTY -->
+
+                <div
+                    v-else-if="filteredCompanies.length === 0"
+                    class="card border-0 shadow-sm rounded-4">
+
+                    <div class="card-body text-center py-5">
+
+                        <i
+                            class="bi bi-building
+                                display-4
+                                text-muted">
+                        </i>
+
+                        <h5 class="mt-3">
+
+                            No Companies Found
+
+                        </h5>
+
+                        <p class="text-muted">
+
+                            Try changing your search.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- COMPANY TABLE -->
+
+                <div
+                    v-else
+                    class="card border-0 shadow-sm rounded-4">
+
+                    <div class="card-body">
+
+                        <div class="table-responsive">
+
+                            <table
+                                class="table
+                                    align-middle
+                                    mb-0">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>Company</th>
+
+                                        <th>Industry</th>
+
+                                        <th>Location</th>
+
+                                        <th>Approval</th>
+
+                                        <th>Account</th>
+
+                                        <th class="text-end">
+                                            Actions
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    <tr
+                                        v-for="
+                                            company
+                                            in filteredCompanies
+                                        "
+                                        :key="company.id">
+
+                                        <td>
+
+                                            <div class="fw-semibold">
+
+                                                {{ company.company_name }}
+
+                                            </div>
+
+                                            <small
+                                                class="text-muted">
+
+                                                {{ company.hr_email }}
+
+                                            </small>
+
+                                        </td>
+
+
+                                        <td>
+
+                                            {{ company.industry_type || "-" }}
+
+                                        </td>
+
+
+                                        <td>
+
+                                            {{ company.location || "-" }}
+
+                                        </td>
+
+
+                                        <td>
+
+                                            <span
+                                                class="badge"
+                                                :class="
+                                                    company.approval_status
+                                                    === 'approved'
+                                                        ? 'bg-success'
+                                                        : company.approval_status
+                                                            === 'pending'
+                                                            ? 'bg-warning text-dark'
+                                                            : 'bg-danger'
+                                                ">
+
+                                                {{
+                                                    company.approval_status
+                                                }}
+
+                                            </span>
+
+                                        </td>
+
+
+                                        <td>
+
+                                            <span
+                                                class="badge"
+                                                :class="
+                                                    accountStatusClass(
+                                                        company.is_active
+                                                    )
+                                                ">
+
+                                                {{
+                                                    accountStatusText(
+                                                        company.is_active
+                                                    )
+                                                }}
+
+                                            </span>
+
+                                        </td>
+
+
+                                        <td class="text-end">
+
+                                            <div class="btn-group">
+
+                                                <button
+                                                    class="btn
+                                                        btn-sm
+                                                        btn-outline-primary"
+                                                    title="View Details"
+                                                    @click="
+                                                        selectedCompany = company;
+                                                        showCompanyDetails = true;
+                                                    ">
+
+                                                    <i
+                                                        class="bi bi-eye">
+                                                    </i>
+
+                                                </button>
+
+
+                                                <button
+                                                    class="btn btn-sm"
+                                                    :class="
+                                                        company.is_active
+                                                            ? 'btn-outline-danger'
+                                                            : 'btn-outline-success'
+                                                    "
+                                                    :title="
+                                                        company.is_active
+                                                            ? 'Deactivate Company'
+                                                            : 'Activate Company'
+                                                    "
+                                                    @click="
+                                                        toggleCompanyStatus(
+                                                            company
+                                                        )
+                                                    ">
+
+                                                    <i
+                                                        :class="
+                                                            company.is_active
+                                                                ? 'bi bi-building-slash'
+                                                                : 'bi bi-building-check'
+                                                        ">
+                                                    </i>
+
+                                                </button>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
 
 
         <!-- Student Details Modal -->
@@ -1263,6 +1897,311 @@ const StudentManagement = {
 
         </div>
 
+        <!-- COMPANY DETAILS MODAL -->
+
+            <div
+                class="modal fade"
+                :class="{show: showCompanyDetails}"
+                :style="{
+                    display:
+                        showCompanyDetails
+                            ? 'block'
+                            : 'none'
+                }"
+                tabindex="-1">
+
+                <div
+                    class="modal-dialog modal-lg
+                        modal-dialog-scrollable">
+
+                    <div class="modal-content">
+
+                        <div class="modal-header">
+
+                            <h5 class="modal-title">
+
+                                <i
+                                    class="bi bi-building
+                                        me-2">
+                                </i>
+
+                                Company Details
+
+                            </h5>
+
+                            <button
+                                type="button"
+                                class="btn-close"
+                                @click="
+                                    showCompanyDetails = false;
+                                    selectedCompany = null;
+                                ">
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            class="modal-body"
+                            v-if="selectedCompany">
+
+                            <div class="row g-4">
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Company Name
+
+                                    </label>
+
+                                    <div class="fw-semibold">
+
+                                        {{
+                                            selectedCompany
+                                            .company_name
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Industry
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .industry_type || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Domain
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .company_domain || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Company Size
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .company_size || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        HR Email
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .hr_email || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        HR Contact
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .hr_contact || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Location
+
+                                    </label>
+
+                                    <div>
+
+                                        {{
+                                            selectedCompany
+                                            .location || "-"
+                                        }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Approval Status
+
+                                    </label>
+
+                                    <div>
+
+                                        {{ selectedCompany.approval_status }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Account Status
+
+                                    </label>
+
+                                    <div>
+
+                                        <span
+                                            class="badge"
+                                            :class="
+                                                accountStatusClass(
+                                                    selectedCompany.is_active
+                                                )
+                                            ">
+
+                                            {{
+                                                accountStatusText(
+                                                    selectedCompany.is_active
+                                                )
+                                            }}
+
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6">
+
+                                    <label
+                                        class="text-muted small">
+
+                                        Website
+
+                                    </label>
+
+                                    <div>
+
+                                        <a
+                                            v-if="
+                                                selectedCompany.website
+                                            "
+                                            :href="
+                                                selectedCompany.website
+                                            "
+                                            target="_blank">
+
+                                            Visit Website
+
+                                        </a>
+
+                                        <span v-else>
+                                            -
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="modal-footer">
+
+                            <button
+                                class="btn btn-secondary"
+                                @click="
+                                    showCompanyDetails = false;
+                                    selectedCompany = null;
+                                ">
+
+                                Close
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
 
         <!-- Applications Modal -->
 
@@ -1479,11 +2418,17 @@ const StudentManagement = {
 
         <div
 
-            v-if="showDetails || showApplications"
+            v-if="
+                showDetails ||
+                showApplications ||
+                showCompanyDetails
+            "
 
             class="modal-backdrop fade show">
 
         </div>
+
+        
 
 
     </div>

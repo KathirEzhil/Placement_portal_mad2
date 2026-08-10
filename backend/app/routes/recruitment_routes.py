@@ -13,6 +13,8 @@ from app.utils.activity_logger import log_activity
 
 from app.utils.mail import send_email
 
+from app.utils.cache import delete_cache, clear_admin_cache
+
 BACKEND_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
@@ -90,6 +92,11 @@ def generate_offer_letter(application_id):
         recruitment.offer_letter_path = filepath
 
         db.session.commit()
+
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
 
         return jsonify({
             "success": True,
@@ -302,6 +309,11 @@ Regards,
 
         db.session.commit()
 
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
+
         return jsonify({
             "success": True,
             "message": f"{round_name} email sent successfully.",
@@ -423,6 +435,11 @@ Regards,
         recruitment.offer_letter_sent_at = datetime.utcnow()
 
         db.session.commit()
+
+        delete_cache(
+            f"company_dashboard:{company.id}"
+        )
+        clear_admin_cache()
 
         return jsonify({
             "success": True,

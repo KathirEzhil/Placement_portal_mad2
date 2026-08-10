@@ -10,6 +10,25 @@ const Sidebar = {
 
             if(!this.currentUser) return [];
 
+            if(
+                this.currentUser.is_active === false &&
+                (
+                    this.currentUser.role === "student" ||
+                    this.currentUser.role === "company"
+                )
+            ){
+
+                return [
+                    {
+                        page: "dashboard",
+                        icon: "bi-exclamation-circle",
+                        label: "Account Deactivated",
+                        disabled: true
+                    }
+                ];
+
+            }
+
             if(this.currentUser.role === "student") {
                 return [
                     { page: "dashboard", icon: "bi-house-door", label: "Dashboard" },
@@ -93,7 +112,7 @@ const Sidebar = {
                     {
                         page:"students",
                         icon:"bi-mortarboard",
-                        label:"Students"
+                        label:"Users"
                     },
 
                     {
@@ -121,8 +140,20 @@ const Sidebar = {
         <div v-for="item in menuItems" :key="item.page">
             <button
                 class="btn w-100 text-start mb-2"
-                :class="currentPage===item.page ? 'btn-primary' : 'btn-outline-light'"
-                @click="$emit('navigate',item.page)">
+                :class="[
+                    currentPage === item.page
+                        ? 'btn-primary'
+                        : 'btn-outline-light',
+
+                    item.disabled
+                        ? 'disabled opacity-75'
+                        : ''
+                ]"
+                :disabled="item.disabled"
+                @click="
+                    !item.disabled &&
+                    $emit('navigate', item.page)
+                ">
                 
                 <i :class="'bi '+item.icon"></i>
                 {{ item.label }}

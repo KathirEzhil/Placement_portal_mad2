@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from flask import current_app
 from flask import send_from_directory
+from datetime import datetime, date
 
 import os
 from werkzeug.utils import secure_filename
@@ -14,6 +15,7 @@ from app.models.recruitment_process import RecruitmentProcess
 
 from app.utils.decorators import login_required, role_required
 from app.utils.activity_logger import log_activity
+from app.utils.cache import get_cache, delete_cache, set_cache
 
 
 ALLOWED_EXTENSIONS = {"pdf","docx","doc"}
@@ -26,6 +28,41 @@ def allowed_file(filename):
 
 
 student_bp = Blueprint("student",__name__,url_prefix="/student")
+
+
+@student_bp.before_request
+def check_student_account_status():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message": "User account not found"
+        }), 404
+
+    if not user.is_active:
+
+        # Allow dashboard request so frontend
+        # can display the deactivated screen
+        if request.path == "analytics/student/dashboard":
+            return None
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Your student account has been "
+                "deactivated by the administrator."
+            ),
+            "account_active": False
+        }), 403
+
+    return None
 
 
 @student_bp.route("/profile",methods=["GET"])
@@ -332,7 +369,9 @@ def view_resume():
 @role_required("student")
 def get_all_drives():
 
-    student = Student.query.filter_by(user_id=session["user_id"]).first()
+    student = Student.query.filter_by(
+        user_id=session["user_id"]
+    ).first()
 
     if not student:
         return jsonify({
@@ -340,16 +379,41 @@ def get_all_drives():
             "message": "Student profile not found."
         }), 404
 
+    cache_key = "student_approved_drives"
+
+    cached_drives = get_cache(cache_key)
+
+    if cached_drives is not None:
+
+        return jsonify({
+            "success": True,
+            "count": len(cached_drives),
+            "drives": cached_drives,
+            "cached": True
+        }), 200
+
     drives = PlacementDrive.query.filter_by(
         status="approved"
     ).order_by(
         PlacementDrive.last_date_to_apply.asc()
     ).all()
 
+    drive_data = [
+        drive.to_dict()
+        for drive in drives
+    ]
+
+    set_cache(
+        cache_key,
+        drive_data,
+        timeout=300
+    )
+
     return jsonify({
         "success": True,
-        "count": len(drives),
-        "drives": [drive.to_dict() for drive in drives]
+        "count": len(drive_data),
+        "drives": drive_data,
+        "cached": False
     }), 200
 
 
@@ -412,6 +476,37 @@ def apply_to_drive(drive_id):
         return jsonify({
             "success": False,
             "message": "This placement drive is not open for applications"
+        }), 400
+
+    # Check application deadline
+
+    if drive.last_date_to_apply:
+
+        if date.today() > drive.last_date_to_apply:
+
+            return jsonify({
+                "success": False,
+                "message": "The application deadline has passed."
+            }), 400
+
+
+    # Check CGPA eligibility
+
+    if (
+        drive.eligibility_cgpa is not None
+        and (
+            student.cgpa is None
+            or student.cgpa < drive.eligibility_cgpa
+        )
+    ):
+
+        return jsonify({
+            "success": False,
+            "message": (
+                f"You are not eligible for this placement drive. "
+                f"Minimum CGPA required is "
+                f"{drive.eligibility_cgpa}."
+            )
         }), 400
     
     if not student.resume:

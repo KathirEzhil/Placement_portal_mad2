@@ -308,7 +308,8 @@ const app = Vue.createApp({
 
                 <company-profile
                     v-if="currentUser.role==='company' &&
-                        currentPage==='profile'">
+                        currentPage==='profile'"
+                    @navigate="currentPage = $event">
                 </company-profile>
 
                 <company-create-drive

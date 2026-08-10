@@ -2,6 +2,8 @@ from sqlalchemy import func
 from sqlalchemy import extract
 from statistics import median
 
+from app.utils.cache import get_cache, set_cache
+
 from datetime import date
 
 from app import db
@@ -22,6 +24,13 @@ from app.utils.profile_completion import calculate_profile_completion
 
 def get_admin_summary():
 
+    cache_key = "admin_summary"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
+
     total_students = Student.query.count()
     approved_companies = Company.query.filter_by(approval_status="approved").count()
     pending_companies = Company.query.filter_by(approval_status="pending").count()
@@ -39,7 +48,7 @@ def get_admin_summary():
     highest_package = None
     average_package = None
 
-    return {
+    result =  {
         "total_students": total_students,
         "approved_companies": approved_companies,
         "pending_companies": pending_companies,
@@ -54,8 +63,23 @@ def get_admin_summary():
         "average_package": average_package
     }
 
+    set_cache(
+        cache_key,
+        result,
+        timeout=300
+        )
+
+    return result
+
 
 def get_recruitment_funnel():
+
+    cache_key = "admin_recruitment_funnel"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     applications = Application.query.count()
     shortlisted = Application.query.filter_by(status="shortlisted").count()
@@ -68,7 +92,7 @@ def get_recruitment_funnel():
     offer_generated = RecruitmentProcess.query.filter_by(offer_letter_generated=True).count()
     offer_sent = RecruitmentProcess.query.filter_by(offer_letter_sent=True).count()
 
-    return {
+    result =  {
         "applications": applications,
         "shortlisted": shortlisted,
         "recruitment_started": recruitment_started,
@@ -77,8 +101,23 @@ def get_recruitment_funnel():
         "offer_sent": offer_sent
     }
 
+    set_cache(
+        cache_key,
+        result,
+        timeout=300
+    )
+
+    return result
+
 
 def get_monthly_trends(year):
+
+    cache_key = f"admin_monthly_trends:{year}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     months = OrderedDict([("January", {}),("February", {}),("March", {}),
         ("April", {}),("May", {}),("June", {}),("July", {}),("August", {}),
@@ -162,10 +201,23 @@ def get_monthly_trends(year):
     for month, count in selection_data:
         months[month_names[int(month)-1]]["selections"] = count
 
+    set_cache(
+        cache_key,
+        months,
+        timeout=300
+    )
+
     return months
 
 
 def get_company_rankings():
+
+    cache_key = "admin_company_rankings"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     company_data = (
         db.session.query(
@@ -213,10 +265,23 @@ def get_company_rankings():
     for index, company in enumerate(rankings):
             company["rank"] = index + 1
 
+    set_cache(
+        cache_key,
+        rankings,
+        timeout=300
+    )
+
     return rankings
 
 
 def get_branch_statistics(year):
+
+    cache_key = f"admin_branch_statistics:{year}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     branch_data = (
 
@@ -273,10 +338,23 @@ def get_branch_statistics(year):
     for index, branch in enumerate(statistics):
         branch["rank"]=index+1
 
+    set_cache(
+        cache_key,
+        statistics,
+        timeout=300
+    )
+
     return statistics
 
 
 def get_package_statistics(year):
+
+    cache_key = f"admin_branch_statistics:{year}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     drives = PlacementDrive.query.filter(
         extract("year", PlacementDrive.created_at) == year,
@@ -343,7 +421,7 @@ def get_package_statistics(year):
         )
 
 
-    return {
+    result = {
 
         "highest_package": highest_package,
 
@@ -358,7 +436,24 @@ def get_package_statistics(year):
         "intern_and_ft_drives": intern_ft_count
 
     }
+
+    set_cache(
+        cache_key,
+        result,
+        timeout=300
+    )
+
+    return result
+
+
 def get_drive_performance(year):
+
+    cache_key = f"admin_drive_performance:{year}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     drives = (
         PlacementDrive.query.filter(
@@ -423,10 +518,23 @@ def get_drive_performance(year):
 
     performance.sort(key=lambda drive: drive["applications"],reverse=True)
 
+    set_cache(
+        cache_key,
+        performance,
+        timeout=300
+    )
+
     return performance
 
 
 def get_recent_activities(limit=20):
+
+    cache_key = f"admin_recent_activities:{limit}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     activities = (
         ActivityLog.query
@@ -435,10 +543,25 @@ def get_recent_activities(limit=20):
         .all()
     )
 
-    return [activity.to_dict() for activity in activities]
+    result = [activity.to_dict() for activity in activities]
+
+    set_cache(
+        cache_key,
+        result,
+        timeout=300
+    )
+
+    return result
 
 
 def get_admin_insights(year):
+
+    cache_key = f"admin_insights:{year}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        return cached_data
 
     insights = []
 
@@ -526,12 +649,28 @@ def get_admin_insights(year):
         )
     })
 
+    set_cache(
+        cache_key,
+        insights,
+        timeout=300
+    )
+
     return insights
     
 
 # ======== Company analytics ========
 
 def get_company_dashboard(company_id):
+
+    cache_key = f"company_dashboard:{company_id}"
+
+    cached_data = get_cache(cache_key)
+
+    if cached_data is not None:
+        print("REDIS CACHE HIT:", cache_key)
+        return cached_data
+
+    print("REDIS CACHE MISS:", cache_key)
 
     company = Company.query.get(company_id)
 
@@ -549,6 +688,8 @@ def get_company_dashboard(company_id):
     drives = PlacementDrive.query.filter_by(
         company_id=company_id
     ).all()
+
+    
 
     drive_ids = [drive.id for drive in drives]
 
@@ -811,7 +952,7 @@ def get_company_dashboard(company_id):
     # FINAL RESPONSE
     # -------------------------
 
-    return {
+    result =  {
 
         "summary": {
             "active_drives": len(approved_drives),
@@ -841,6 +982,10 @@ def get_company_dashboard(company_id):
 
         "insights": company_insights
     }
+
+    set_cache(cache_key, result, timeout=300)
+
+    return result
 
 # ======== Student analytics ========
 
