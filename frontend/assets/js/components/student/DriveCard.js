@@ -143,9 +143,11 @@ const DriveCard = {
                     disabled
                     class="btn btn-success">
 
-                    Applied
+                    Already Applied
 
                 </button>
+
+                
 
             </div>
 

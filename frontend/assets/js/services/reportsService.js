@@ -12,6 +12,20 @@ const reportsService = {
 
         return await response.json();
 
+    },
+
+    async runDailyReminders(){
+
+        const response = await fetch(
+            "/admin/jobs/daily-reminder",
+            {
+                method: "POST",
+                credentials: "include"
+            }
+        );
+
+        return await response.json();
+
     }
 
 };

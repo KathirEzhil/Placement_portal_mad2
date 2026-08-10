@@ -59,7 +59,7 @@ const CompanyCreateDrive = {
 
         goBack() {
 
-            this.$emit("navigate", "manage-drives");
+            this.$emit("navigate", "dashboard");
 
         },
 

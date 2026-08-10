@@ -1,6 +1,9 @@
 backend/venv
 docs/architecture.md
 backend/instance/placement.db
-
+backend/uploads/logos
+backend/uploads/offer_letters
+backend/uploads/resumes
+backend/exports
 
 **/__pycache__/

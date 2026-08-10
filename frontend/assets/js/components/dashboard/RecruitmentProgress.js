@@ -2,6 +2,8 @@ const RecruitmentProgress = {
 
     props: ["processes"],
 
+    emits: ["view-all"],
+
     template: 
     `
     <div class="card shadow-sm border-0 h-100">
@@ -11,7 +13,13 @@ const RecruitmentProgress = {
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Recruitment Progress</h5>
 
-            <a href="#" class="text-decoration-none small">View All →</a>
+            <button
+                class="btn"
+                @click="$emit('view-all')">
+
+                View All →
+
+            </button>
         </div>
         
         <!-- Body -->

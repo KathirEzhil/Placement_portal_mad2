@@ -15,7 +15,7 @@ const Sidebar = {
                     { page: "dashboard", icon: "bi-house-door", label: "Dashboard" },
                     { page: "profile", icon: "bi-person", label: "Profile" },
                     { page: "drives", icon: "bi-briefcase", label: "Placement Drives" },
-                    { page: "applications", icon: "bi-file-earmark-text", label: "My Applications" },
+                    { page: "student-applications", icon: "bi-file-earmark-text", label: "My Applications" },
                     { page: "analytics", icon: "bi-bar-chart", label: "Analytics" }
                 ];
             }
@@ -55,9 +55,9 @@ const Sidebar = {
                         },
 
                         {
-                            page: "applicants",
+                            page: "analytics",
                             icon: "bi-people",
-                            label: "Applicants"
+                            label: "Analytics"
                         }
 
                     );

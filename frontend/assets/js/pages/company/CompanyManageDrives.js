@@ -270,7 +270,8 @@ const CompanyManageDrives = {
                         </button>
 
                         <button
-                            v-else
+                            v-if="drive.status === 'approved' ||
+                                drive.status === 'closed'"
                             class="btn btn-success btn-sm"
                             @click="$emit('open-applicants', drive.id)">
 

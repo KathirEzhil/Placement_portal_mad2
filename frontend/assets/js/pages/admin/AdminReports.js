@@ -4,13 +4,17 @@ const AdminReports = {
 
         return {
 
-            generating: false,
+            generatingReport: false,
+
+            runningReminders: false,
 
             message: "",
 
             error: "",
 
-            taskId: null
+            taskId: null,
+
+            exporting: false
 
         };
 
@@ -21,7 +25,7 @@ const AdminReports = {
 
         async generateMonthlyReport(){
 
-            this.generating = true;
+            this.generatingReport = true;
 
             this.message = "";
 
@@ -72,7 +76,120 @@ const AdminReports = {
 
             finally{
 
-                this.generating = false;
+                this.generatingReport = false;
+
+            }
+
+        },
+
+
+        async runDailyReminders(){
+
+            this.runningReminders = true;
+
+            this.message = "";
+
+            this.error = "";
+
+            this.taskId = null;
+
+
+            try{
+
+                const result =
+                    await reportsService
+                        .runDailyReminders();
+
+
+                if(result.success){
+
+                    this.taskId =
+                        result.task_id;
+
+                    this.message =
+                        result.message ||
+                        "Daily reminders started.";
+
+                }
+
+                else{
+
+                    this.error =
+                        result.message ||
+                        "Unable to start daily reminders.";
+
+                }
+
+            }
+
+            catch(error){
+
+                console.error(
+                    "Daily reminder error:",
+                    error
+                );
+
+                this.error =
+                    "Unable to start daily reminders.";
+
+            }
+
+            finally{
+
+                this.runningReminders = false;
+
+            }
+
+        },
+
+
+        async exportToExcel() {
+
+            this.exporting = true;
+
+            try {
+
+                const response = await fetch(
+                    "/api/export/admin/excel",
+                    {
+                        method: "POST",
+                        credentials: "include"
+                    }
+                );
+
+                const result =
+                    await response.json();
+
+                if (!response.ok || !result.success) {
+
+                    throw new Error(
+                        result.message ||
+                        "Failed to start Excel export."
+                    );
+
+                }
+
+                alert(result.message);
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Admin Excel export error:",
+                    error
+                );
+
+                alert(
+                    error.message ||
+                    "Failed to generate Excel export."
+                );
+
+            }
+
+            finally {
+
+                this.exporting = false;
 
             }
 
@@ -86,141 +203,313 @@ const AdminReports = {
     <div class="container-fluid py-4">
 
 
-        <!-- Header -->
-
         <div class="mb-4">
 
-            <h2 class="fw-bold mb-1">
+            <div class="d-flex align-items-center gap-3 mb-1">
 
-                <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                <h1 class="mb-0">
+                    <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                    Reports & Background Jobs
+                </h1>
 
-                Reports
+                <button
+                    class="btn btn-success"
+                    @click="exportToExcel"
+                    :disabled="exporting">
 
-            </h2>
+                    <i class="bi bi-file-earmark-excel me-2"></i>
 
+                    {{
+                        exporting
+                            ? "Generating..."
+                            : "Export to Excel"
+                    }}
+
+                </button>
+
+            </div>
             <p class="text-muted mb-0">
 
-                Generate and manage placement portal reports
+                Generate reports and run automated placement
+                notification jobs.
 
             </p>
+
+            
 
         </div>
 
 
+        <!-- Notifications -->
 
-        <!-- Monthly Report -->
+        <div
+            v-if="message"
+            class="alert alert-success">
 
-        <div class="card border-0 shadow-sm rounded-4">
+            <i class="bi bi-check-circle-fill me-2"></i>
 
-            <div class="card-body p-4">
+            {{message}}
+
+        </div>
 
 
-                <div class="d-flex
-                            justify-content-between
-                            align-items-center
-                            mb-4">
+        <div
+            v-if="error"
+            class="alert alert-danger">
 
-                    <div>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
 
-                        <h5 class="fw-bold mb-1">
+            {{error}}
 
-                            <i class="bi bi-calendar-month
-                                      text-primary me-2"></i>
+        </div>
 
-                            Monthly Placement Report
 
-                        </h5>
+        <div class="row g-4">
 
-                        <p class="text-muted mb-0">
 
-                            Generate the latest placement
-                            statistics and send them to the admin.
+            <!-- Monthly Report -->
+
+            <div class="col-lg-6">
+
+                <div
+                    class="card
+                           border-0
+                           shadow-sm
+                           rounded-4
+                           h-100">
+
+                    <div class="card-body p-4">
+
+
+                        <div
+                            class="d-flex
+                                   align-items-center
+                                   mb-3">
+
+                            <div
+                                class="rounded-3
+                                       bg-primary-subtle
+                                       p-3
+                                       me-3">
+
+                                <i
+                                    class="bi bi-calendar-month
+                                           text-primary
+                                           fs-4">
+
+                                </i>
+
+                            </div>
+
+
+                            <div>
+
+                                <h5 class="fw-bold mb-1">
+
+                                    Monthly Placement Report
+
+                                </h5>
+
+                                <small class="text-muted">
+
+                                    Generate current placement
+                                    statistics and email the report.
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <hr>
+
+
+                        <p class="text-muted">
+
+                            Includes students, companies,
+                            drives, applications, selections
+                            and placement rate.
 
                         </p>
 
+
+                        <button
+
+                            class="btn btn-primary"
+
+                            :disabled="generatingReport"
+
+                            @click="generateMonthlyReport">
+
+                            <span
+                                v-if="generatingReport"
+                                class="spinner-border
+                                       spinner-border-sm
+                                       me-2">
+
+                            </span>
+
+                            <i
+                                v-else
+                                class="bi bi-send me-2">
+
+                            </i>
+
+                            {{generatingReport
+                                ? "Generating..."
+                                : "Generate Monthly Report"}}
+
+                        </button>
+
                     </div>
-
-
-                    <button
-
-                        class="btn btn-primary"
-
-                        :disabled="generating"
-
-                        @click="generateMonthlyReport">
-
-                        <span
-                            v-if="generating"
-                            class="spinner-border
-                                   spinner-border-sm
-                                   me-2">
-
-                        </span>
-
-                        <i
-                            v-else
-                            class="bi bi-send me-2">
-
-                        </i>
-
-                        {{ generating
-                            ? "Generating..."
-                            : "Generate Report" }}
-
-                    </button>
 
                 </div>
 
+            </div>
 
 
-                <!-- Success -->
+
+            <!-- Daily Reminders -->
+
+            <div class="col-lg-6">
 
                 <div
-                    v-if="message"
+                    class="card
+                           border-0
+                           shadow-sm
+                           rounded-4
+                           h-100">
 
-                    class="alert alert-success">
+                    <div class="card-body p-4">
+
+
+                        <div
+                            class="d-flex
+                                   align-items-center
+                                   mb-3">
+
+                            <div
+                                class="rounded-3
+                                       bg-warning-subtle
+                                       p-3
+                                       me-3">
+
+                                <i
+                                    class="bi bi-bell
+                                           text-warning
+                                           fs-4">
+
+                                </i>
+
+                            </div>
+
+
+                            <div>
+
+                                <h5 class="fw-bold mb-1">
+
+                                    Daily Placement Reminders
+
+                                </h5>
+
+                                <small class="text-muted">
+
+                                    Notify students about
+                                    upcoming deadlines and interviews.
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <hr>
+
+
+                        <p class="text-muted">
+
+                            Checks for placement drives closing
+                            tomorrow and interviews scheduled
+                            for tomorrow.
+
+                        </p>
+
+
+                        <button
+
+                            class="btn btn-warning"
+
+                            :disabled="runningReminders"
+
+                            @click="runDailyReminders">
+
+                            <span
+                                v-if="runningReminders"
+                                class="spinner-border
+                                       spinner-border-sm
+                                       me-2">
+
+                            </span>
+
+                            <i
+                                v-else
+                                class="bi bi-bell me-2">
+
+                            </i>
+
+                            {{runningReminders
+                                ? "Starting..."
+                                : "Run Daily Reminders"}}
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- Background Job Information -->
+
+        <div
+            v-if="taskId"
+            class="card
+                   border-0
+                   shadow-sm
+                   rounded-4
+                   mt-4">
+
+            <div class="card-body">
+
+
+                <h6 class="fw-bold">
 
                     <i
-                        class="bi bi-check-circle-fill me-2">
+                        class="bi bi-cpu me-2
+                               text-success">
 
                     </i>
 
-                    {{message}}
+                    Background Job Started
 
-                </div>
-
-
-
-                <!-- Error -->
-
-                <div
-                    v-if="error"
-
-                    class="alert alert-danger">
-
-                    <i
-                        class="bi bi-exclamation-triangle-fill me-2">
-
-                    </i>
-
-                    {{error}}
-
-                </div>
+                </h6>
 
 
+                <p class="mb-1 text-muted">
 
-                <!-- Task Information -->
+                    The request has been handed over to
+                    Celery for background processing.
 
-                <div
-                    v-if="taskId"
+                </p>
 
-                    class="border rounded-3 p-3">
 
-                    <div class="fw-semibold">
-
-                        Background Task Started
-
-                    </div>
+                <div>
 
                     <small class="text-muted">
 
@@ -234,113 +523,7 @@ const AdminReports = {
 
                     </code>
 
-                    <div class="small text-muted mt-2">
-
-                        The report is being generated in the
-                        background and will be sent to the
-                        configured admin email.
-
-                    </div>
-
                 </div>
-
-
-
-                <!-- Report Contents -->
-
-                <div class="mt-4">
-
-                    <h6 class="fw-bold">
-
-                        Report Includes
-
-                    </h6>
-
-                    <div class="row g-3 mt-1">
-
-
-                        <div class="col-md-4">
-
-                            <div class="border rounded-3 p-3">
-
-                                <i class="bi bi-people
-                                          text-primary fs-4">
-
-                                </i>
-
-                                <div class="fw-semibold mt-2">
-
-                                    Student Statistics
-
-                                </div>
-
-                                <small class="text-muted">
-
-                                    Total students and placement rate
-
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="col-md-4">
-
-                            <div class="border rounded-3 p-3">
-
-                                <i class="bi bi-building
-                                          text-success fs-4">
-
-                                </i>
-
-                                <div class="fw-semibold mt-2">
-
-                                    Company Statistics
-
-                                </div>
-
-                                <small class="text-muted">
-
-                                    Participating companies
-
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="col-md-4">
-
-                            <div class="border rounded-3 p-3">
-
-                                <i class="bi bi-briefcase
-                                          text-warning fs-4">
-
-                                </i>
-
-                                <div class="fw-semibold mt-2">
-
-                                    Placement Activity
-
-                                </div>
-
-                                <small class="text-muted">
-
-                                    Drives, applications and selections
-
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                    </div>
-
-                </div>
-
 
             </div>
 

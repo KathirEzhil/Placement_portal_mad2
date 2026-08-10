@@ -41,6 +41,47 @@ const adminService = {
 
     },
 
+    async getAllCompanies() {
+
+        const response = await fetch(
+            "/admin/companies",
+            {
+                method: "GET",
+                credentials: "include"
+            }
+        );
+
+        return await response.json();
+
+    },
+
+
+    async updateCompanyStatus(
+        companyId,
+        isActive
+    ) {
+
+        const response = await fetch(
+            `/admin/company/${companyId}/status`,
+            {
+                method: "PUT",
+
+                credentials: "include",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    is_active: isActive
+                })
+            }
+        );
+
+        return await response.json();
+
+    },
+
     async rejectCompany(companyId, reason) {
 
         const response = await fetch(

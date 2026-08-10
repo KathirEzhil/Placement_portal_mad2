@@ -1,5 +1,7 @@
 const CompanyProfile = {
 
+    emits: ["navigate"],
+
     data() {
         return {
 
@@ -24,6 +26,8 @@ const CompanyProfile = {
         }
     },
 
+    
+
     async mounted() {
 
         await this.loadProfile();
@@ -31,6 +35,12 @@ const CompanyProfile = {
     },
 
     methods: {
+
+        goBack() {
+
+            this.$emit("navigate", "dashboard");
+
+        },
 
         async loadProfile() {
 
@@ -124,11 +134,7 @@ const CompanyProfile = {
 
         },
 
-        goBack() {
-
-            this.$emit("navigate", "dashboard");
-
-        },
+        
 
         async uploadLogo() {
 

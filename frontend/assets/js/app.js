@@ -194,6 +194,7 @@ const app = Vue.createApp({
 
         navigate(page) {
 
+
             if (page === "create-drive") {
 
                 this.editingDriveId = null;
@@ -281,6 +282,23 @@ const app = Vue.createApp({
                 <student-profile v-if="currentUser.role==='student' && currentPage==='profile'"></student-profile>
                 <student-placement-drives v-if="currentUser.role==='student' && currentPage==='drives'"></student-placement-drives>
 
+                <student-applications
+                    v-if="currentPage === 'student-applications'">
+                </student-applications>
+                <student-applications
+                    v-if="
+                        currentUser.role === 'student' &&
+                        currentPage === 'applications'
+                    ">
+                </student-applications>
+
+                <student-analytics
+                    v-if="
+                        currentUser.role === 'student' &&
+                        currentPage === 'analytics'
+                    ">
+                </student-analytics>
+
                 <company-dashboard
                     v-if="currentUser.role==='company' &&
                         currentPage==='dashboard'"
@@ -319,6 +337,14 @@ const app = Vue.createApp({
 
                 </company-applicants>
 
+                <company-analytics
+                    v-if="
+                        currentPage === 'analytics' &&
+                        currentUser &&
+                        currentUser.role === 'company'
+                    "
+                ></company-analytics>
+
 
                 <!-- Admin -->
 
@@ -352,6 +378,14 @@ const app = Vue.createApp({
                     v-else-if="currentUser.role==='admin' &&
                             currentPage==='reports'">
                 </admin-reports>
+
+                <admin-recruitment
+                    v-else-if="
+                        currentUser.role === 'admin' &&
+                        currentPage === 'recruitment'
+                    ">
+                </admin-recruitment>
+                
                             </div>
                         </div>
                     </template>
@@ -390,6 +424,14 @@ app.component("placement-calendar", placementCalendar);
 app.component("recruitment-progress", RecruitmentProgress);
 app.component("student-profile", StudentProfile);
 app.component("student-placement-drives", StudentPlacementDrives);
+app.component(
+    "student-applications",
+    StudentApplications
+);
+app.component(
+    "student-analytics",
+    StudentAnalytics
+);
 
 
 
@@ -429,9 +471,20 @@ app.component(
 );
 
 app.component(
+    "admin-recruitment",
+    AdminRecruitment
+);
+
+app.component(
     "company-applicants",
     CompanyApplicants
 );
+app.component(
+    "company-analytics",
+    CompanyAnalytics
+);
+
+
 
 app.mount("#app");
 

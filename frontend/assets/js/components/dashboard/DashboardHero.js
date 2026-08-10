@@ -1,6 +1,13 @@
 const DashboardHero = {
 
-    props: ["title","subtitle","buttonText","buttonIcon","currentUser"],
+    props: [
+        "title",
+        "subtitle",
+        "buttonText",
+        "buttonIcon",
+        "currentUser",
+        "studentName"
+    ],
 
     emits: ["action"],
 
@@ -13,7 +20,9 @@ const DashboardHero = {
 
                     <h5 class="text-primary fw-bold mb-3">Hi {{ title }}</h5>
 
-                    <h1 class="fw-bold mb-3">{{ currentUser.email }}</h1>
+                    <h1 class="display-5 fw-bold">
+                        {{ studentName || currentUser.email }}
+                    </h1>
 
                     <p class="text-muted fs-5">{{ subtitle }}</p>
 
