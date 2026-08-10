@@ -10,7 +10,7 @@ def calculate_profile_completion(student):
         student.linkedin_url,
         student.github_url,
         student.portfolio_url,
-        student.address
+        student.permanent_address
         ]
 
     completed=sum(1 for field in fields if field)

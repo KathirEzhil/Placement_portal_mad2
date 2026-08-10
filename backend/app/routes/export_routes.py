@@ -4,6 +4,8 @@ import os
 
 from app.models.student import Student
 from app.models.company import Company
+from app.models.user import User
+from app.models.placement_drive import PlacementDrive
 from app.utils.decorators import login_required, role_required
 
 
@@ -113,3 +115,94 @@ def download_export(filename):
         filename,
         as_attachment=True
     )
+
+@export_bp.route("/student/excel", methods=["POST"])
+@login_required
+@role_required("student")
+def export_student_excel():
+
+    from app.tasks.export_tasks import export_student_applications_excel
+
+    student = Student.query.filter_by(
+        user_id=session["user_id"]
+    ).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student profile not found."
+        }), 404
+
+    user = User.query.get(session["user_id"])
+
+    task = export_student_applications_excel.delay(
+        student.id,
+        student.college_email
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Excel export started. The file will be sent to your email.",
+        "task_id": task.id
+    }), 202
+
+@export_bp.route("/company/<int:drive_id>/excel", methods=["POST"])
+@login_required
+@role_required("company")
+def export_company_excel(drive_id):
+
+    from app.tasks.export_tasks import export_company_applicants_excel
+
+    company = Company.query.filter_by(
+        user_id=session["user_id"]
+    ).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found."
+        }), 404
+
+    drive = PlacementDrive.query.filter_by(
+        id=drive_id,
+        company_id=company.id
+    ).first()
+
+    if not drive:
+        return jsonify({
+            "success": False,
+            "message": "Placement drive not found."
+        }), 404
+
+    user = User.query.get(session["user_id"])
+
+    task = export_company_applicants_excel.delay(
+        drive.id,
+        user.email
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Excel export started. The file will be sent to your email.",
+        "task_id": task.id
+    }), 202
+
+
+@export_bp.route("/admin/excel", methods=["POST"])
+@login_required
+@role_required("admin")
+def export_admin_excel():
+
+    from app.tasks.export_tasks import export_admin_report_excel
+
+    user = User.query.get(session["user_id"])
+
+    task = export_admin_report_excel.delay(
+        "24f1002369@ds.study.iitm.ac.in"
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Excel report generation started. The file will be sent to your email.",
+        "task_id": task.id
+    }), 202

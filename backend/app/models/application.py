@@ -40,7 +40,14 @@ class Application(db.Model):
                 "id": self.drive.id,
                 "title": self.drive.title,
                 "company_name": self.drive.company.company_name,
-                "location": self.drive.location
+                "location": self.drive.location,
+                "job_type": self.drive.job_type,
+                "compensation": self.drive.compensation,
+                "last_date_to_apply": (
+                    self.drive.last_date_to_apply.isoformat()
+                    if self.drive.last_date_to_apply
+                    else None
+                ),
             },
 
             "resume_used": self.resume_used,

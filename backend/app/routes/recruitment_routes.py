@@ -1,7 +1,7 @@
 from datetime import datetime
 import os
 
-from flask import Blueprint
+from flask import Blueprint, request
 from flask import jsonify, session, send_file
 from app.models.company import Company
 from app.models.application import Application
@@ -132,6 +132,192 @@ def test_email():
             "success": False,
             "message": str(e)
         }), 500
+
+
+
+@recruitment_bp.route(
+    "/applications/<int:application_id>/send-round-email",
+    methods=["PATCH"]
+)
+@login_required
+@role_required("company")
+def send_round_email(application_id):
+
+    company = Company.query.filter_by(
+        user_id=session["user_id"]
+    ).first()
+
+    if not company:
+        return jsonify({
+            "success": False,
+            "message": "Company profile not found."
+        }), 404
+
+    application = (
+        Application.query
+        .join(PlacementDrive)
+        .filter(
+            Application.id == application_id,
+            PlacementDrive.company_id == company.id
+        )
+        .first()
+    )
+
+    if not application:
+        return jsonify({
+            "success": False,
+            "message": "Application not found."
+        }), 404
+
+    if application.status != "shortlisted":
+        return jsonify({
+            "success": False,
+            "message": "Round email can only be sent to shortlisted students."
+        }), 400
+
+    recruitment = application.recruitment_process
+
+    if not recruitment:
+        return jsonify({
+            "success": False,
+            "message": "Recruitment process not found."
+        }), 404
+
+    data = request.get_json() or {}
+
+    round_number = data.get("round_number")
+
+    if round_number not in [1, 2, 3, 4]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid round number."
+        }), 400
+
+    round_required = getattr(
+        application.drive,
+        f"round{round_number}_required",
+        False
+    )
+
+    if not round_required:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} is not required."
+        }), 400
+
+    scheduled_at = getattr(
+        recruitment,
+        f"round{round_number}_scheduled_at",
+        None
+    )
+
+    if not scheduled_at:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} has not been scheduled."
+        }), 400
+
+    email_sent = getattr(
+        recruitment,
+        f"round{round_number}_email_sent",
+        False
+    )
+
+    if email_sent:
+        return jsonify({
+            "success": False,
+            "message": f"Round {round_number} email has already been sent."
+        }), 409
+
+    round_name = getattr(
+        application.drive,
+        f"round{round_number}_name",
+        None
+    )
+
+    if not round_name:
+        round_name = f"Round {round_number}"
+
+    meeting_details = getattr(
+        recruitment,
+        f"round{round_number}_meeting_details",
+        None
+    )
+
+    test_link = getattr(
+        recruitment,
+        f"round{round_number}_test_link",
+        None
+    )
+
+    student = application.student
+
+    body = f"""
+Dear {student.full_name},
+
+This is to inform you that your {round_name} for the placement drive
+{application.drive.title} at {company.company_name} has been scheduled.
+
+Date & Time:
+{scheduled_at.strftime("%d-%m-%Y %I:%M %p")}
+
+"""
+
+    if meeting_details:
+        body += f"""
+Meeting / Interview Details:
+{meeting_details}
+
+"""
+
+    if test_link:
+        body += f"""
+Test Link:
+{test_link}
+
+"""
+
+    body += f"""
+Please be available at the scheduled time.
+
+Regards,
+{company.company_name}
+"""
+
+    try:
+
+        send_email(
+            subject=f"Placement Portal - {round_name} Scheduled",
+            recipients=[
+                student.college_email
+            ],
+            body=body
+        )
+
+        setattr(
+            recruitment,
+            f"round{round_number}_email_sent",
+            True
+        )
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"{round_name} email sent successfully.",
+            "recruitment": recruitment.to_dict()
+        }), 200
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": "Failed to send round email.",
+            "error": str(e)
+        }), 500
+
 
 
 @recruitment_bp.route("/applications/<int:application_id>/send-offer", methods=["PATCH"])

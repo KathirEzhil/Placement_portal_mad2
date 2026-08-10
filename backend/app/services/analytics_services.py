@@ -533,106 +533,156 @@ def get_admin_insights(year):
 
 def get_company_dashboard(company_id):
 
-    drives = PlacementDrive.query.filter_by(company_id=company_id).all()
+    company = Company.query.get(company_id)
+
+    if not company:
+        return {
+            "summary": {},
+            "recruitment_funnel": {},
+            "drive_performance": [],
+            "branch_distribution": [],
+            "skill_analytics": [],
+            "recent_activity": [],
+            "insights": []
+        }
+
+    drives = PlacementDrive.query.filter_by(
+        company_id=company_id
+    ).all()
 
     drive_ids = [drive.id for drive in drives]
 
-    total_applications = 0
-    shortlisted = 0
-    selected = 0
+    applications = []
+
+    if drive_ids:
+        applications = Application.query.filter(
+            Application.drive_id.in_(drive_ids)
+        ).all()
+
+    # -------------------------
+    # SUMMARY
+    # -------------------------
+
+    total_applications = len(applications)
+
+    shortlisted = sum(
+        1 for app in applications
+        if app.status == "shortlisted"
+    )
+
+    selected = sum(
+        1 for app in applications
+        if app.status == "selected"
+    )
+
     offers_generated = 0
     offers_sent = 0
-
-    for drive_id in drive_ids:
-
-        total_applications += Application.query.filter_by(drive_id=drive_id).count()
-
-        shortlisted += Application.query.filter_by(
-            drive_id=drive_id,
-            status="shortlisted"
-        ).count()
-
-        selected += Application.query.filter_by(
-            drive_id=drive_id,
-            status="selected"
-        ).count()
-
-    recruitments = RecruitmentProcess.query.join(Application).filter(
-        Application.drive_id.in_(drive_ids)
-    ).all()
-
-    for recruitment in recruitments:
-        if recruitment.offer_letter_generated:
-            offers_generated += 1
-        if recruitment.offer_letter_sent:
-            offers_sent += 1
-
-    applications = Application.query.filter(
-        Application.drive_id.in_(drive_ids)
-    ).all()
-
     recruitment_started = 0
-    selected = 0
-    offer_generated = 0
-    offer_sent = 0
 
     for application in applications:
 
-        if application.recruitment_process:
-            recruitment = application.recruitment_process
-            if recruitment.recruitment_status in ["in_progress", "completed"]:
-                recruitment_started += 1
-            if recruitment.offer_letter_generated:
-                offer_generated += 1
-            if recruitment.offer_letter_sent:
-                offer_sent += 1
-        if application.status == "selected":
-            selected += 1
+        recruitment = application.recruitment_process
+
+        if not recruitment:
+            continue
+
+        if recruitment.recruitment_status in [
+            "in_progress",
+            "completed"
+        ]:
+            recruitment_started += 1
+
+        if recruitment.offer_letter_generated:
+            offers_generated += 1
+
+        if recruitment.offer_letter_sent:
+            offers_sent += 1
+
+    # -------------------------
+    # DRIVE PERFORMANCE
+    # -------------------------
 
     drive_performance = []
 
     for drive in drives:
 
-        drive_applications = [app for app in applications if app.drive_id == drive.id]
-        shortlisted_count = sum(1 for app in drive_applications if app.status == "shortlisted")
-        selected_count = sum(1 for app in drive_applications if app.status == "selected")
-        rejected_count = sum(1 for app in drive_applications if app.status == "rejected")
-        withdrawn_count = sum(1 for app in drive_applications if app.status == "withdrawn")
+        drive_applications = [
+            app for app in applications
+            if app.drive_id == drive.id
+        ]
 
-    success_rate = 0
-    if drive_applications:
-        success_rate = round((selected_count / len(drive_applications)) * 100,2)
+        drive_shortlisted = sum(
+            1 for app in drive_applications
+            if app.status == "shortlisted"
+        )
 
+        drive_selected = sum(
+            1 for app in drive_applications
+            if app.status == "selected"
+        )
+
+        drive_rejected = sum(
+            1 for app in drive_applications
+            if app.status == "rejected"
+        )
+
+        drive_withdrawn = sum(
+            1 for app in drive_applications
+            if app.status == "withdrawn"
+        )
+
+        success_rate = 0
+
+        if drive_applications:
+            success_rate = round(
+                (drive_selected / len(drive_applications)) * 100,
+                2
+            )
+
+        drive_performance.append({
+            "drive_id": drive.id,
+            "title": drive.title,
+            "job_type": drive.job_type,
+            "location": drive.location,
+            "applications": len(drive_applications),
+            "shortlisted": drive_shortlisted,
+            "selected": drive_selected,
+            "rejected": drive_rejected,
+            "withdrawn": drive_withdrawn,
+            "success_rate": success_rate,
+            "status": drive.status
+        })
+
+    # -------------------------
+    # BRANCH DISTRIBUTION
+    # -------------------------
 
     branch_distribution = {}
+
     for application in applications:
+
         branch = application.student.branch
-        if branch not in branch_distribution:
-            branch_distribution[branch] = 0
-        branch_distribution[branch] += 1
 
-    branch_data = []
-    for branch, count in branch_distribution.items():
-        branch_data.append({"branch": branch,"applications": count})
+        branch_distribution[branch] = (
+            branch_distribution.get(branch, 0) + 1
+        )
 
+    branch_data = [
+        {
+            "branch": branch,
+            "applications": count
+        }
+        for branch, count in branch_distribution.items()
+    ]
 
-    drive_performance.append({
-        "drive_id": drive.id,
-        "title": drive.title,
-        "job_type": drive.job_type,
-        "location": drive.location,
-        "applications": len(drive_applications),
-        "shortlisted": shortlisted_count,
-        "selected": selected_count,
-        "rejected": rejected_count,
-        "withdrawn": withdrawn_count,
-        "success_rate": success_rate,
-        "status": drive.status
-    })
+    # -------------------------
+    # SKILL ANALYTICS
+    # -------------------------
 
     skill_distribution = {}
 
     for application in applications:
+
         student = application.student
 
         if not student.skills:
@@ -645,112 +695,152 @@ def get_company_dashboard(company_id):
         ]
 
         for skill in skills:
+
             skill_distribution[skill] = (
                 skill_distribution.get(skill, 0) + 1
             )
 
-        skill_data = []
+    skill_data = [
+        {
+            "skill": skill,
+            "count": count
+        }
+        for skill, count in skill_distribution.items()
+    ]
 
-        for skill, count in skill_distribution.items():
-            skill_data.append({"skill": skill,"count": count})
+    skill_data.sort(
+        key=lambda skill: skill["count"],
+        reverse=True
+    )
 
-        skill_data.sort(key=lambda skill: skill["count"],reverse=True)
+    # -------------------------
+    # RECENT ACTIVITY
+    # -------------------------
 
-        company = Company.query.filter_by(company_id=company_id).first()
+    recent_activity = (
+        ActivityLog.query
+        .filter_by(user_id=company.user_id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(10)
+        .all()
+    )
 
-        recent_activity = (
-            ActivityLog.query.filter_by(
-                user_id=company.user_id
+    recent_activity = [
+        activity.to_dict()
+        for activity in recent_activity
+    ]
+
+    # -------------------------
+    # INSIGHTS
+    # -------------------------
+
+    company_insights = []
+
+    approved_drives = [
+        drive for drive in drives
+        if drive.status == "approved"
+    ]
+
+    if approved_drives:
+
+        company_insights.append({
+            "type": "info",
+            "icon": "work",
+            "title": "Active Drives",
+            "message": (
+                f"You currently have "
+                f"{len(approved_drives)} active placement drives."
             )
-            .order_by(ActivityLog.created_at.desc())
-            .limit(10)
-            .all()
+        })
+
+    if selected > 0:
+
+        company_insights.append({
+            "type": "success",
+            "icon": "emoji_events",
+            "title": "Selections",
+            "message": (
+                f"You have selected "
+                f"{selected} students."
+            )
+        })
+
+    if skill_data:
+
+        top_skill = skill_data[0]
+
+        company_insights.append({
+            "type": "success",
+            "icon": "psychology",
+            "title": "Most Common Skill",
+            "message": (
+                f"{top_skill['skill']} appears in "
+                f"{top_skill['count']} applications."
+            )
+        })
+
+    if drive_performance:
+
+        top_drive = max(
+            drive_performance,
+            key=lambda drive: drive["applications"]
         )
 
-        recent_activity = [activity.to_dict() for activity in recent_activity]
-
-
-        company_insights = []
-
-        if drives:
-            company_insights.append({
-                "type": "info",
-                "icon": "work",
-                "title": "Active Drives",
-                "message": (f"You currently have {len(drives)} active placement drives.")
-            })
-
-        if selected > 0:
-            company_insights.append({
-                "type": "success",
-                "icon": "emoji_events",
-                "title": "Selections",
-                "message": (f"You have selected {selected} students.")
-            })
-
-        if skill_data:
-            top_skill = skill_data[0]
-            company_insights.append({
-                "type": "success",
-                "icon": "psychology",
-                "title": "Most Common Skill",
-                "message": (
-                    f"{top_skill['skill']} appears in "
-                    f"{top_skill['count']} applications."
-                )
-            })
-
-        if drive_performance:
-            top_drive = max(
-                drive_performance,
-                key=lambda drive: drive["applications"]
+        company_insights.append({
+            "type": "info",
+            "icon": "trending_up",
+            "title": "Most Popular Drive",
+            "message": (
+                f"{top_drive['title']} received "
+                f"{top_drive['applications']} applications."
             )
-            company_insights.append({
-                "type": "info",
-                "icon": "trending_up",
-                "title": "Most Popular Drive",
-                "message": (
-                    f"{top_drive['title']} received "
-                    f"{top_drive['applications']} applications."
-                )
-            })
+        })
 
-        if offers_sent > 0:
-            company_insights.append({
-                "type": "success",
-                "icon": "mail",
-                "title": "Offer Letters",
-                "message": (f"{offers_sent} offer letters have been sent.")
-            })
+    if offers_sent > 0:
 
+        company_insights.append({
+            "type": "success",
+            "icon": "mail",
+            "title": "Offer Letters",
+            "message": (
+                f"{offers_sent} offer letters have been sent."
+            )
+        })
 
-
+    # -------------------------
+    # FINAL RESPONSE
+    # -------------------------
 
     return {
+
         "summary": {
-            "active_drives": len(drives),
+            "active_drives": len(approved_drives),
             "applications": total_applications,
             "shortlisted": shortlisted,
             "selected": selected,
             "offers_generated": offers_generated,
             "offers_sent": offers_sent
         },
+
         "recruitment_funnel": {
-            "applications": len(applications),
+            "applications": total_applications,
             "shortlisted": shortlisted,
             "recruitment_started": recruitment_started,
             "selected": selected,
-            "offer_generated": offer_generated,
-            "offer_sent": offer_sent
+            "offer_generated": offers_generated,
+            "offer_sent": offers_sent
         },
-        "drive_performance": drive_performance,
-        "branch_distribution": branch_data,
-        "skill_analytics": skill_data,
-        "recent_activity": recent_activity,
-        "insights": company_insights
-        
-    }
 
+        "drive_performance": drive_performance,
+
+        "branch_distribution": branch_data,
+
+        "skill_analytics": skill_data,
+
+        "recent_activity": recent_activity,
+
+        "insights": company_insights
+    }
 
 # ======== Student analytics ========
 
@@ -905,9 +995,10 @@ def get_student_analytics(student_id):
         if not drive.required_skills:
             continue
 
-        student_skills=set(
+        student_skills = set(
             s.strip().lower()
-            for s in student.skills.split(",")
+            for s in (student.skills or "").split(",")
+            if s.strip()
         )
 
         required=set(
